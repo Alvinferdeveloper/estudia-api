@@ -78,12 +78,6 @@
     "overrides": {
       "typeorm": "0.3.26",
       "@hedystia/better-auth-typeorm>typeorm": "0.3.26"
-    },
-    "dedupe-peer-dependents": true,
-    "public-hoist-pattern": [
-      "typeorm",
-      "reflect-metadata",
-      "mysql2"
-    ]
+    }
   }
 }
