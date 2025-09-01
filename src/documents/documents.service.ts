@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document } from '../typeorm/entities/Document.entity';
@@ -24,7 +24,7 @@ export class DocumentsService {
     );
   }
 
-  async uploadDocument(file: Express.Multer.File, userId: string): Promise<Document> {
+  async uploadDocument(file: Express.Multer.File, userId: string, topicId?: string): Promise<Document> {
     try {
       const filePath = `public/${userId}/${Date.now()}-${file.originalname}`;
       const { data, error } = await this.supabase.storage
@@ -44,6 +44,7 @@ export class DocumentsService {
         fileSize: file.size,
         mimeType: file.mimetype,
         userId: userId,
+        topicId: topicId
       });
 
       return this.documentsRepository.save(newDocument);
@@ -51,5 +52,21 @@ export class DocumentsService {
       console.error('Error uploading document:', error);
       throw new InternalServerErrorException('Failed to upload document');
     }
+  }
+
+  async findAllDocuments(userId: string, topicId?: string): Promise<Document[]> {
+    const where: any = { userId };
+    if (topicId) {
+      where.topicId = topicId;
+    }
+    return this.documentsRepository.find({ where });
+  }
+
+  async findOneDocument(id: string, userId: string): Promise<Document> {
+    const document = await this.documentsRepository.findOne({ where: { id, userId } });
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+    return document;
   }
 }

@@ -10,20 +10,23 @@ import { Document } from './typeorm/entities/Document.entity';
 import { Account } from './typeorm/entities/Account.entity';
 import { Session } from './typeorm/entities/Session.entity';
 import { Verification } from './typeorm/entities/Verification.entity';
+import { TopicsModule } from './topics/topics.module';
+import { Topic } from './typeorm/entities/Topic.entity';
 
 @Module({
   imports: [
     AuthModule.forRoot(auth),
     DocumentsModule,
+    TopicsModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT ?? 3306),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
-      database: process.env.DB_DATABASE,
+      database: process.env.DB_DATABASE, 
       entities: [
-        User, Document, Account, Session, Verification
+        User, Document, Account, Session, Verification, Topic
       ],
       synchronize: true,
       timezone: 'Z',

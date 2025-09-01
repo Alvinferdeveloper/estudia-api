@@ -1,5 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Document } from './Document.entity';
+import { Topic } from './Topic.entity';
 
 @Entity('user')
 export class User {
@@ -18,12 +19,15 @@ export class User {
   @Column('text', { name: 'image', nullable: true })
   image: string;
 
-  @Column('date', { name: 'createdAt', nullable: false })
+  @CreateDateColumn({ name: 'createdAt', type: 'timestamp' })
   createdAt: Date;
 
-  @Column('date', { name: 'updatedAt', nullable: false })
+  @UpdateDateColumn({ name: 'updatedAt', type: 'timestamp' })
   updatedAt: Date;
 
   @OneToMany(() => Document, document => document.user)
   documents: Document[];
+
+  @OneToMany(() => Topic, topic => topic.user)
+  topics: Topic[];
 }

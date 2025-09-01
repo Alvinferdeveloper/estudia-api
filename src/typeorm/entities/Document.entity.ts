@@ -1,5 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './User.entity';
+import { Topic } from './Topic.entity';
 
 @Entity('document')
 export class Document {
@@ -10,7 +11,7 @@ export class Document {
   fileName: string;
 
   @Column('varchar', { name: 'filePath', nullable: false, unique: true, length: 255 })
-  filePath: string;
+  filePath: string; // Path in Supabase Storage
 
   @Column('bigint', { name: 'fileSize', nullable: false })
   fileSize: number;
@@ -30,4 +31,12 @@ export class Document {
 
   @Column('text', { name: 'userId', nullable: false })
   userId: string;
+
+  @ManyToOne(() => Topic, topic => topic.documents, { nullable: true })
+  @JoinColumn({ name: 'topicId' })
+  topic: Topic;
+
+  @Column('text', { name: 'topicId', nullable: true })
+  topicId: string
 }
+
