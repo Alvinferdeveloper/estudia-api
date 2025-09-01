@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Document } from './Document.entity';
 
 @Entity('user')
 export class User {
@@ -23,4 +24,6 @@ export class User {
   @Column('date', { name: 'updatedAt', nullable: false })
   updatedAt: Date;
 
+  @OneToMany(() => Document, document => document.user)
+  documents: Document[];
 }
