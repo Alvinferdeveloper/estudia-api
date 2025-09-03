@@ -71,7 +71,7 @@ export class DocumentsService {
     }
 
     const { data } = await this.supabase.storage.from('documents').createSignedUrl(document.filePath, 60 * 60 * 24);
-    console.log(data);
+    
     return { ...document, publicUrl: data?.signedUrl };
   }
 
