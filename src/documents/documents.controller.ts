@@ -1,4 +1,4 @@
-import { Controller, Post, Get, UseInterceptors, UploadedFile, BadRequestException, UseGuards, Body, Query, Param } from '@nestjs/common';
+import { Controller, Post, Get, Delete, UseInterceptors, UploadedFile, BadRequestException, UseGuards, Body, Query, Param } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentsService } from './documents.service';
 import { AuthGuard } from '../common/guards/auth.guard';
@@ -38,6 +38,11 @@ export class DocumentsController {
   @Get(':id')
   async findOneDocument(@Param('id') id: string, @CurrentUserId() userId: string) {
     return this.documentsService.findOneDocument(id, userId);
+  }
+
+  @Delete(':id')
+  async deleteDocument(@Param('id') id: string, @CurrentUserId() userId: string) {
+    return this.documentsService.deleteDocument(id, userId);
   }
 }
 

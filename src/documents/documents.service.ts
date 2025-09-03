@@ -71,4 +71,23 @@ export class DocumentsService {
     }
     return document;
   }
+
+  async deleteDocument(id: string, userId: string): Promise<void> {
+    const document = await this.findOneDocument(id, userId);
+
+    try {
+      const { error } = await this.supabase.storage
+        .from('documents')
+        .remove([document.filePath]);
+
+      if (error) {
+        throw new InternalServerErrorException(`Supabase delete error: ${error.message}`);
+      }
+
+      await this.documentsRepository.delete(id);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      throw new InternalServerErrorException('Failed to delete document');
+    }
+  }
 }
