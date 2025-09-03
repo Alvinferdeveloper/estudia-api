@@ -64,12 +64,15 @@ export class DocumentsService {
     return this.documentsRepository.find({ where });
   }
 
-  async findOneDocument(id: string, userId: string): Promise<Document> {
+  async findOneDocument(id: string, userId: string): Promise<Document & { publicUrl?: string }> {
     const document = await this.documentsRepository.findOne({ where: { id, userId } });
     if (!document) {
       throw new NotFoundException('Document not found');
     }
-    return document;
+
+    const { data } = await this.supabase.storage.from('documents').createSignedUrl(document.filePath, 60 * 60 * 24);
+    console.log(data);
+    return { ...document, publicUrl: data?.signedUrl };
   }
 
   async deleteDocument(id: string, userId: string): Promise<void> {
