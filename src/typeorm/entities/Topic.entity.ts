@@ -10,6 +10,9 @@ export class Topic {
   @Column('varchar', { name: 'name', nullable: false, length: 255 })
   name: string;
 
+  @Column('varchar', { name: 'color', nullable: true, length: 7 }) // e.g., #RRGGBB
+  color: string;
+
   @CreateDateColumn({ name: 'createdAt', type: 'timestamp' })
   createdAt: Date;
 
@@ -25,4 +28,8 @@ export class Topic {
 
   @OneToMany(() => Document, document => document.topic)
   documents: Document[];
+
+  // This 'count' field will not be stored in the database.
+  // It needs to be populated manually in queries or in the service layer.
+  count?: number;
 }

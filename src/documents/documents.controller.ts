@@ -15,6 +15,7 @@ export class DocumentsController {
     @CurrentUserId() userId: string,
     @UploadedFile() file: Express.Multer.File,
     @Body('topicId') topicId?: string,
+    @Body('tags') tags?: string, // tags as a comma-separated string
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -24,7 +25,9 @@ export class DocumentsController {
       throw new BadRequestException('Only PDF files are allowed');
     }
 
-    return this.documentsService.uploadDocument(file, userId, topicId);
+    const tagsArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
+
+    return this.documentsService.uploadDocument(file, userId, topicId, tagsArray);
   }
 
   @Get()

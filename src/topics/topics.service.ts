@@ -10,25 +10,35 @@ export class TopicsService {
     private topicsRepository: Repository<Topic>,
   ) { }
 
-  async createTopic(name: string, userId: string): Promise<Topic> {
-    const newTopic = this.topicsRepository.create({ name, userId });
+  async createTopic(name: string, color: string, userId: string): Promise<Topic> {
+    const newTopic = this.topicsRepository.create({ name, color, userId });
     return this.topicsRepository.save(newTopic);
   }
 
   async findAllTopics(userId: string): Promise<Topic[]> {
-    return this.topicsRepository.find({ where: { userId } });
+    const topics = await this.topicsRepository.find({
+      where: { userId },
+      relations: ['documents'], // Load the documents relation
+    });
+
+    // Manually calculate the count for each topic
+    return topics.map(topic => ({
+      ...topic,
+      count: topic.documents ? topic.documents.length : 0,
+    }));
   }
 
   async findOneTopic(id: string, userId: string): Promise<Topic | null> {
     return this.topicsRepository.findOne({ where: { id, userId } });
   }
 
-  async updateTopic(id: string, name: string, userId: string): Promise<Topic> {
+  async updateTopic(id: string, name: string, color: string, userId: string): Promise<Topic> {
     const topic = await this.topicsRepository.findOne({ where: { id, userId } });
     if (!topic) {
       throw new NotFoundException('Topic not found');
     }
     topic.name = name;
+    topic.color = color;
     return this.topicsRepository.save(topic);
   }
 

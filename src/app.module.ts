@@ -24,7 +24,7 @@ import { Topic } from './typeorm/entities/Topic.entity';
       port: Number(process.env.DB_PORT ?? 3306),
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
-      database: process.env.DB_DATABASE, 
+      database: process.env.DB_DATABASE,
       entities: [
         User, Document, Account, Session, Verification, Topic
       ],

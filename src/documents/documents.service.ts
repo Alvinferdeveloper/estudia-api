@@ -24,7 +24,8 @@ export class DocumentsService {
     );
   }
 
-  async uploadDocument(file: Express.Multer.File, userId: string, topicId?: string): Promise<Document> {
+
+  async uploadDocument(file: Express.Multer.File, userId: string, topicId?: string, tags?: string[]): Promise<Document> {
     try {
       const filePath = `public/${userId}/${Date.now()}-${file.originalname}`;
       const { data, error } = await this.supabase.storage
@@ -44,7 +45,8 @@ export class DocumentsService {
         fileSize: file.size,
         mimeType: file.mimetype,
         userId: userId,
-        topicId: topicId
+        topicId: topicId,
+        tags: tags || [],
       });
 
       return this.documentsRepository.save(newDocument);

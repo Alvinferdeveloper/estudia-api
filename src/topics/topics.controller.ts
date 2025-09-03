@@ -10,8 +10,8 @@ export class TopicsController {
   constructor(private readonly topicsService: TopicsService) { }
 
   @Post()
-  async createTopic(@Body('name') name: string, @CurrentUserId() userId: string) {
-    return this.topicsService.createTopic(name, userId);
+  async createTopic(@Body('name') name: string, @Body('color') color: string, @CurrentUserId() userId: string) {
+    return this.topicsService.createTopic(name, color, userId);
   }
 
   @Get()
@@ -29,8 +29,8 @@ export class TopicsController {
   }
 
   @Put(':id')
-  async updateTopic(@Param('id') id: string, @Body('name') name: string, @CurrentUserId() userId: string) {
-    return this.topicsService.updateTopic(id, name, userId);
+  async updateTopic(@Param('id') id: string, @Body('name') name: string, @Body('color') color: string, @CurrentUserId() userId: string) {
+    return this.topicsService.updateTopic(id, name, color, userId);
   }
 
   @Delete(':id')

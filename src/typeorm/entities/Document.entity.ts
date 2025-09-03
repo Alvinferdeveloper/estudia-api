@@ -37,6 +37,9 @@ export class Document {
   topic: Topic;
 
   @Column('text', { name: 'topicId', nullable: true })
-  topicId: string
+  topicId: string;
+
+  @Column('json', { name: 'tags', nullable: true })
+  tags: string[];
 }
 
