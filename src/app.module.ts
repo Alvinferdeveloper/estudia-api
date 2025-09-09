@@ -12,12 +12,15 @@ import { Session } from './typeorm/entities/Session.entity';
 import { Verification } from './typeorm/entities/Verification.entity';
 import { TopicsModule } from './topics/topics.module';
 import { Topic } from './typeorm/entities/Topic.entity';
+import { MessagesModule } from './messages/messages.module';
+import { Message } from './typeorm/entities/Message.entity';
 
 @Module({
   imports: [
     AuthModule.forRoot(auth),
     DocumentsModule,
     TopicsModule,
+    MessagesModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
@@ -26,7 +29,7 @@ import { Topic } from './typeorm/entities/Topic.entity';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       entities: [
-        User, Document, Account, Session, Verification, Topic
+        User, Document, Account, Session, Verification, Topic, Message
       ],
       synchronize: true,
       timezone: 'Z',

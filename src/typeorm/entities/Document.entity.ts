@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './User.entity';
 import { Topic } from './Topic.entity';
+import { Message } from './Message.entity';
 
 @Entity('document')
 export class Document {
@@ -41,5 +42,8 @@ export class Document {
 
   @Column('json', { name: 'tags', nullable: true })
   tags: string[];
+
+  @OneToMany(() => Message, message => message.document)
+  messages: Message[];
 }
 
