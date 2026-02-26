@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Document } from '../typeorm/entities/Document.entity';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import 'dotenv/config';
@@ -56,18 +56,34 @@ export class DocumentsService {
     }
   }
 
-  async findAllDocuments(userId: string, topicId?: string, page: number = 1, limit: number = 10): Promise<{ data: Document[], total: number, page: number, limit: number }> {
-    const where: any = { userId };
+  async findAllDocuments(
+    userId: string,
+    topicId?: string,
+    page: number = 1,
+    limit: number = 10,
+    search?: string
+  ): Promise<{ data: Document[], total: number, page: number, limit: number }> {
+    const queryBuilder = this.documentsRepository.createQueryBuilder('document');
+
+    queryBuilder.where('document.userId = :userId', { userId });
+
     if (topicId) {
-      where.topicId = topicId;
+      queryBuilder.andWhere('document.topicId = :topicId', { topicId });
     }
 
-    const [data, total] = await this.documentsRepository.findAndCount({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+    if (search) {
+      queryBuilder.andWhere(
+        '(document.fileName LIKE :search OR CAST(document.tags AS CHAR) LIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    queryBuilder
+      .orderBy('document.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
 
     return {
       data,

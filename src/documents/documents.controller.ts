@@ -36,12 +36,14 @@ export class DocumentsController {
     @Query('topicId') topicId?: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('search') search?: string,
   ) {
     return this.documentsService.findAllDocuments(
       userId, 
       topicId, 
       Number(page) || 1, 
-      Number(limit) || 10
+      Number(limit) || 10,
+      search
     );
   }
 
