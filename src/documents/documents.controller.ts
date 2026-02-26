@@ -31,8 +31,18 @@ export class DocumentsController {
   }
 
   @Get()
-  async findAllDocuments(@CurrentUserId() userId: string, @Query('topicId') topicId?: string) {
-    return this.documentsService.findAllDocuments(userId, topicId);
+  async findAllDocuments(
+    @CurrentUserId() userId: string,
+    @Query('topicId') topicId?: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    return this.documentsService.findAllDocuments(
+      userId, 
+      topicId, 
+      Number(page) || 1, 
+      Number(limit) || 10
+    );
   }
 
   @Get(':id')

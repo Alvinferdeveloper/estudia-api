@@ -56,12 +56,25 @@ export class DocumentsService {
     }
   }
 
-  async findAllDocuments(userId: string, topicId?: string): Promise<Document[]> {
+  async findAllDocuments(userId: string, topicId?: string, page: number = 1, limit: number = 10): Promise<{ data: Document[], total: number, page: number, limit: number }> {
     const where: any = { userId };
     if (topicId) {
       where.topicId = topicId;
     }
-    return this.documentsRepository.find({ where });
+
+    const [data, total] = await this.documentsRepository.findAndCount({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOneDocument(id: string, userId: string): Promise<Document & { publicUrl?: string }> {
