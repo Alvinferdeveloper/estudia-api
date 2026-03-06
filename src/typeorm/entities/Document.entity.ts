@@ -2,6 +2,7 @@ import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColum
 import { User } from './User.entity';
 import { Topic } from './Topic.entity';
 import { Message } from './Message.entity';
+import { Annotation } from './Annotation.entity';
 
 @Entity('document')
 export class Document {
@@ -43,7 +44,10 @@ export class Document {
   @Column('json', { name: 'tags', nullable: true })
   tags: string[];
 
-  @OneToMany(() => Message, message => message.document)
-  messages: Message[];
+@OneToMany(() => Message, message => message.document)
+    messages: Message[];
+
+    @OneToMany(() => Annotation, annotation => annotation.document)
+    annotations: Annotation[];
 }
 

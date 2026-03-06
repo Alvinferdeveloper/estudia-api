@@ -14,6 +14,8 @@ import { TopicsModule } from './topics/topics.module';
 import { Topic } from './typeorm/entities/Topic.entity';
 import { MessagesModule } from './messages/messages.module';
 import { Message } from './typeorm/entities/Message.entity';
+import { AnnotationsModule } from './annotations/annotations.module';
+import { Annotation } from './typeorm/entities/Annotation.entity';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { Message } from './typeorm/entities/Message.entity';
     DocumentsModule,
     TopicsModule,
     MessagesModule,
+    AnnotationsModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
@@ -29,7 +32,7 @@ import { Message } from './typeorm/entities/Message.entity';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       entities: [
-        User, Document, Account, Session, Verification, Topic, Message
+        User, Document, Account, Session, Verification, Topic, Message, Annotation
       ],
       synchronize: true,
       timezone: 'Z',
