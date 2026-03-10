@@ -15,7 +15,8 @@ export class DocumentsController {
     @CurrentUserId() userId: string,
     @UploadedFile() file: Express.Multer.File,
     @Body('topicId') topicId?: string,
-    @Body('tags') tags?: string, // tags as a comma-separated string
+    @Body('folderId') folderId?: string,
+    @Body('tags') tags?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -25,15 +26,14 @@ export class DocumentsController {
       throw new BadRequestException('Only PDF files are allowed');
     }
 
-    const tagsArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
-
-    return this.documentsService.uploadDocument(file, userId, topicId, tagsArray);
+    return this.documentsService.uploadDocument(file, userId, topicId, folderId, tags);
   }
 
   @Get()
   async findAllDocuments(
     @CurrentUserId() userId: string,
     @Query('topicId') topicId?: string,
+    @Query('folderId') folderId?: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
     @Query('search') search?: string,
@@ -41,6 +41,26 @@ export class DocumentsController {
     return this.documentsService.findAllDocuments(
       userId, 
       topicId, 
+      folderId,
+      Number(page) || 1, 
+      Number(limit) || 10,
+      search
+    );
+  }
+
+  @Get('items')
+  async findAllItems(
+    @CurrentUserId() userId: string,
+    @Query('topicId') topicId?: string,
+    @Query('folderId') folderId?: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search?: string,
+  ) {
+    return this.documentsService.findAllItems(
+      userId, 
+      topicId, 
+      folderId,
       Number(page) || 1, 
       Number(limit) || 10,
       search

@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './User.entity';
 import { Topic } from './Topic.entity';
+import { Folder } from './Folder.entity';
 import { Message } from './Message.entity';
 import { Annotation } from './Annotation.entity';
 
@@ -41,13 +42,20 @@ export class Document {
   @Column('text', { name: 'topicId', nullable: true })
   topicId: string;
 
+  @ManyToOne(() => Folder, folder => folder.documents, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'folderId' })
+  folder: Folder;
+
+  @Column('text', { name: 'folderId', nullable: true })
+  folderId: string | null;
+
   @Column('json', { name: 'tags', nullable: true })
   tags: string[];
 
-@OneToMany(() => Message, message => message.document)
-    messages: Message[];
+  @OneToMany(() => Message, message => message.document)
+  messages: Message[];
 
-    @OneToMany(() => Annotation, annotation => annotation.document)
-    annotations: Annotation[];
+  @OneToMany(() => Annotation, annotation => annotation.document)
+  annotations: Annotation[];
 }
 

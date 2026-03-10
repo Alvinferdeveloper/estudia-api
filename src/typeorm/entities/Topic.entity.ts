@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './User.entity';
 import { Document } from './Document.entity';
+import { Folder } from './Folder.entity';
 
 @Entity('topic')
 export class Topic {
@@ -10,7 +11,7 @@ export class Topic {
   @Column('varchar', { name: 'name', nullable: false, length: 255 })
   name: string;
 
-  @Column('varchar', { name: 'color', nullable: true, length: 7 }) // e.g., #RRGGBB
+  @Column('varchar', { name: 'color', nullable: true, length: 7 })
   color: string;
 
   @CreateDateColumn({ name: 'createdAt', type: 'timestamp' })
@@ -29,7 +30,8 @@ export class Topic {
   @OneToMany(() => Document, document => document.topic)
   documents: Document[];
 
-  // This 'count' field will not be stored in the database.
-  // It needs to be populated manually in queries or in the service layer.
+  @OneToMany(() => Folder, folder => folder.topic)
+  folders: Folder[];
+
   count?: number;
 }

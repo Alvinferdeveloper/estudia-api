@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Document } from './Document.entity';
 import { Topic } from './Topic.entity';
+import { Folder } from './Folder.entity';
 
 @Entity('user')
 export class User {
@@ -30,4 +31,7 @@ export class User {
 
   @OneToMany(() => Topic, topic => topic.user)
   topics: Topic[];
+
+  @OneToMany(() => Folder, folder => folder.user)
+  folders: Folder[];
 }
