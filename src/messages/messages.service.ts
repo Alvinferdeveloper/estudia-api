@@ -11,25 +11,37 @@ export class MessagesService {
     private messagesRepository: Repository<Message>,
     @InjectRepository(Document)
     private documentsRepository: Repository<Document>,
-  ) { }
+  ) {}
 
   async getMessages(documentId: string, userId: string): Promise<Message[]> {
     await this.verifyDocumentAccess(documentId, userId);
-    return this.messagesRepository.find({ where: { documentId }, order: { createdAt: 'ASC' } });
+    return this.messagesRepository.find({
+      where: { documentId },
+      order: { createdAt: 'ASC' },
+    });
   }
 
   async createMessage(
     documentId: string,
     userId: string,
-    createMessageDto: { role: 'user' | 'assistant'; content: string }
+    createMessageDto: { role: 'user' | 'assistant'; content: string },
   ): Promise<Message> {
     await this.verifyDocumentAccess(documentId, userId);
-    const newMessage = this.messagesRepository.create({ ...createMessageDto, documentId });
+    const newMessage = this.messagesRepository.create({
+      role: createMessageDto.role,
+      content: createMessageDto.content,
+      documentId,
+    });
     return this.messagesRepository.save(newMessage);
   }
 
-  private async verifyDocumentAccess(documentId: string, userId: string): Promise<void> {
-    const document = await this.documentsRepository.findOne({ where: { id: documentId, userId } });
+  private async verifyDocumentAccess(
+    documentId: string,
+    userId: string,
+  ): Promise<void> {
+    const document = await this.documentsRepository.findOne({
+      where: { id: documentId, userId },
+    });
     if (!document) {
       throw new UnauthorizedException('Access to this document is denied');
     }

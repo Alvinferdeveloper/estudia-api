@@ -5,9 +5,9 @@ import { AnnotationsController } from './annotations.controller';
 import { AnnotationsService } from './annotations.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Annotation])],
-    controllers: [AnnotationsController],
-    providers: [AnnotationsService],
-    exports: [AnnotationsService],
+  imports: [TypeOrmModule.forFeature([Annotation])],
+  controllers: [AnnotationsController],
+  providers: [AnnotationsService],
+  exports: [AnnotationsService],
 })
 export class AnnotationsModule {}

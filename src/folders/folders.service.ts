@@ -8,21 +8,28 @@ export class FoldersService {
   constructor(
     @InjectRepository(Folder)
     private foldersRepository: Repository<Folder>,
-  ) { }
+  ) {}
 
-  async createFolder(name: string, color: string, topicId: string, userId: string, parentId?: string): Promise<Folder> {
+  async createFolder(
+    name: string,
+    color: string,
+    topicId: string,
+    userId: string,
+    parentId?: string,
+  ): Promise<Folder> {
     const newFolder = this.foldersRepository.create({
       name,
       color,
       topicId,
       userId,
-      parentId
+      parentId,
     });
     return this.foldersRepository.save(newFolder);
   }
 
   async findAllFolders(userId: string, topicId?: string): Promise<Folder[]> {
-    const query = this.foldersRepository.createQueryBuilder('folder')
+    const query = this.foldersRepository
+      .createQueryBuilder('folder')
       .where('folder.userId = :userId', { userId })
       .leftJoinAndSelect('folder.subfolders', 'subfolders')
       .leftJoinAndSelect('folder.documents', 'documents');
@@ -33,14 +40,15 @@ export class FoldersService {
 
     const folders = await query.getMany();
 
-    return folders.map(folder => ({
+    return folders.map((folder) => ({
       ...folder,
       count: folder.documents ? folder.documents.length : 0,
       subfoldersCount: folder.subfolders ? folder.subfolders.length : 0,
-      subfolders: folder.subfolders?.map(sub => ({
-        ...sub,
-        count: sub.documents ? sub.documents.length : 0,
-      })) || [],
+      subfolders:
+        folder.subfolders?.map((sub) => ({
+          ...sub,
+          count: sub.documents ? sub.documents.length : 0,
+        })) || [],
     }));
   }
 
@@ -50,7 +58,7 @@ export class FoldersService {
       relations: ['subfolders', 'documents'],
     });
 
-    return folders.map(folder => ({
+    return folders.map((folder) => ({
       ...folder,
       count: folder.documents ? folder.documents.length : 0,
       subfoldersCount: folder.subfolders ? folder.subfolders.length : 0,
@@ -63,7 +71,7 @@ export class FoldersService {
       relations: ['subfolders', 'documents'],
     });
 
-    return folders.map(folder => ({
+    return folders.map((folder) => ({
       ...folder,
       count: folder.documents ? folder.documents.length : 0,
       subfoldersCount: folder.subfolders ? folder.subfolders.length : 0,
@@ -73,12 +81,19 @@ export class FoldersService {
   async findOneFolder(id: string, userId: string): Promise<Folder | null> {
     return this.foldersRepository.findOne({
       where: { id, userId },
-      relations: ['subfolders', 'documents', 'parent']
+      relations: ['subfolders', 'documents', 'parent'],
     });
   }
 
-  async updateFolder(id: string, name: string, color: string, userId: string): Promise<Folder> {
-    const folder = await this.foldersRepository.findOne({ where: { id, userId } });
+  async updateFolder(
+    id: string,
+    name: string,
+    color: string,
+    userId: string,
+  ): Promise<Folder> {
+    const folder = await this.foldersRepository.findOne({
+      where: { id, userId },
+    });
     if (!folder) {
       throw new NotFoundException('Folder not found');
     }

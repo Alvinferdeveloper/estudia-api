@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Put, Delete, Body, Param, UseGuards, Req, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  NotFoundException,
+} from '@nestjs/common';
 import { TopicsService } from './topics.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { Request } from 'express';
@@ -7,10 +18,14 @@ import { CurrentUserId } from '../common/decorators/user.decorator';
 @Controller('topics')
 @UseGuards(AuthGuard)
 export class TopicsController {
-  constructor(private readonly topicsService: TopicsService) { }
+  constructor(private readonly topicsService: TopicsService) {}
 
   @Post()
-  async createTopic(@Body('name') name: string, @Body('color') color: string, @CurrentUserId() userId: string) {
+  async createTopic(
+    @Body('name') name: string,
+    @Body('color') color: string,
+    @CurrentUserId() userId: string,
+  ) {
     return this.topicsService.createTopic(name, color, userId);
   }
 
@@ -29,7 +44,12 @@ export class TopicsController {
   }
 
   @Put(':id')
-  async updateTopic(@Param('id') id: string, @Body('name') name: string, @Body('color') color: string, @CurrentUserId() userId: string) {
+  async updateTopic(
+    @Param('id') id: string,
+    @Body('name') name: string,
+    @Body('color') color: string,
+    @CurrentUserId() userId: string,
+  ) {
     return this.topicsService.updateTopic(id, name, color, userId);
   }
 

@@ -10,6 +10,6 @@ import { User } from '../typeorm/entities/User.entity';
   imports: [TypeOrmModule.forFeature([Document, Folder, User])],
   controllers: [DocumentsController],
   providers: [DocumentsService],
-  exports: [DocumentsService]
+  exports: [DocumentsService],
 })
-export class DocumentsModule { }
+export class DocumentsModule {}

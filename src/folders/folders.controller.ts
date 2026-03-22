@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Put, Delete, Body, Param, Query, UseGuards, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  NotFoundException,
+} from '@nestjs/common';
 import { FoldersService } from './folders.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
@@ -6,7 +17,7 @@ import { CurrentUserId } from '../common/decorators/user.decorator';
 @Controller('folders')
 @UseGuards(AuthGuard)
 export class FoldersController {
-  constructor(private readonly foldersService: FoldersService) { }
+  constructor(private readonly foldersService: FoldersService) {}
 
   @Post()
   async createFolder(
@@ -14,15 +25,21 @@ export class FoldersController {
     @Body('color') color: string,
     @Body('topicId') topicId: string,
     @Body('parentId') parentId: string | undefined,
-    @CurrentUserId() userId: string
+    @CurrentUserId() userId: string,
   ) {
-    return this.foldersService.createFolder(name, color, topicId, userId, parentId);
+    return this.foldersService.createFolder(
+      name,
+      color,
+      topicId,
+      userId,
+      parentId,
+    );
   }
 
   @Get()
   async findAllFolders(
     @CurrentUserId() userId: string,
-    @Query('topicId') topicId?: string
+    @Query('topicId') topicId?: string,
   ) {
     return this.foldersService.findAllFolders(userId, topicId);
   }
@@ -30,7 +47,7 @@ export class FoldersController {
   @Get('topic/:topicId')
   async findFoldersByTopic(
     @Param('topicId') topicId: string,
-    @CurrentUserId() userId: string
+    @CurrentUserId() userId: string,
   ) {
     return this.foldersService.findFoldersByTopic(topicId, userId);
   }
@@ -38,13 +55,16 @@ export class FoldersController {
   @Get('root/:topicId')
   async findRootFolders(
     @Param('topicId') topicId: string,
-    @CurrentUserId() userId: string
+    @CurrentUserId() userId: string,
   ) {
     return this.foldersService.findRootFolders(topicId, userId);
   }
 
   @Get(':id')
-  async findOneFolder(@Param('id') id: string, @CurrentUserId() userId: string) {
+  async findOneFolder(
+    @Param('id') id: string,
+    @CurrentUserId() userId: string,
+  ) {
     const folder = await this.foldersService.findOneFolder(id, userId);
     if (!folder) {
       throw new NotFoundException('Folder not found');
@@ -57,7 +77,7 @@ export class FoldersController {
     @Param('id') id: string,
     @Body('name') name: string,
     @Body('color') color: string,
-    @CurrentUserId() userId: string
+    @CurrentUserId() userId: string,
   ) {
     return this.foldersService.updateFolder(id, name, color, userId);
   }

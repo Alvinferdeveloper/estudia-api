@@ -9,6 +9,6 @@ import { Document } from '../typeorm/entities/Document.entity';
   imports: [TypeOrmModule.forFeature([Message, Document])],
   controllers: [MessagesController],
   providers: [MessagesService],
-  exports: [MessagesService]
+  exports: [MessagesService],
 })
-export class MessagesModule { }
+export class MessagesModule {}

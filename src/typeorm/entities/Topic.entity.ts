@@ -1,4 +1,13 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { User } from './User.entity';
 import { Document } from './Document.entity';
 import { Folder } from './Folder.entity';
@@ -20,17 +29,17 @@ export class Topic {
   @UpdateDateColumn({ name: 'updatedAt', type: 'timestamp' })
   updatedAt: Date;
 
-  @ManyToOne(() => User, user => user.topics)
+  @ManyToOne(() => User, (user) => user.topics)
   @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column('text', { name: 'userId', nullable: false })
   userId: string;
 
-  @OneToMany(() => Document, document => document.topic)
+  @OneToMany(() => Document, (document) => document.topic)
   documents: Document[];
 
-  @OneToMany(() => Folder, folder => folder.topic)
+  @OneToMany(() => Folder, (folder) => folder.topic)
   folders: Folder[];
 
   count?: number;

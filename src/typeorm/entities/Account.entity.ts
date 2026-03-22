@@ -40,5 +40,4 @@ export class Account {
 
   @Column('date', { name: 'updatedAt', nullable: false })
   updatedAt: Date;
-
 }

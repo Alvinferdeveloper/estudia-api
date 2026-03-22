@@ -8,7 +8,12 @@ export class Session {
   @Column('date', { name: 'expiresAt', nullable: false })
   expiresAt: Date;
 
-  @Column('varchar', { name: 'token', nullable: false, unique: true, length: 255 })
+  @Column('varchar', {
+    name: 'token',
+    nullable: false,
+    unique: true,
+    length: 255,
+  })
   token: string;
 
   @Column('date', { name: 'createdAt', nullable: false })
@@ -25,5 +30,4 @@ export class Session {
 
   @Column('text', { name: 'userId', nullable: false })
   userId: string;
-
 }

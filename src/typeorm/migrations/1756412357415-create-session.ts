@@ -1,4 +1,10 @@
-import { type MigrationInterface, type QueryRunner, Table, TableIndex, TableColumn } from 'typeorm';
+import {
+  type MigrationInterface,
+  type QueryRunner,
+  Table,
+  TableIndex,
+  TableColumn,
+} from 'typeorm';
 
 export class CreateSession1756412357415 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -45,7 +51,7 @@ export class CreateSession1756412357415 implements MigrationInterface {
             name: 'userId',
             type: 'text',
             isNullable: false,
-          }
+          },
         ],
       }),
     );

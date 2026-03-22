@@ -11,4 +11,4 @@ import { User } from '../typeorm/entities/User.entity';
   providers: [TopicsService],
   exports: [TopicsService],
 })
-export class TopicsModule { }
+export class TopicsModule {}

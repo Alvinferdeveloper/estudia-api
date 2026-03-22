@@ -35,7 +35,15 @@ import { Folder } from './typeorm/entities/Folder.entity';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       entities: [
-        User, Document, Account, Session, Verification, Topic, Message, Annotation, Folder
+        User,
+        Document,
+        Account,
+        Session,
+        Verification,
+        Topic,
+        Message,
+        Annotation,
+        Folder,
       ],
       synchronize: true,
       timezone: 'Z',
@@ -44,4 +52,4 @@ import { Folder } from './typeorm/entities/Folder.entity';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

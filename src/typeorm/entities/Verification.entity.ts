@@ -19,5 +19,4 @@ export class Verification {
 
   @Column('date', { name: 'updatedAt', nullable: true })
   updatedAt: Date;
-
 }

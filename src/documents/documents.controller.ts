@@ -1,4 +1,16 @@
-import { Controller, Post, Get, Delete, UseInterceptors, UploadedFile, BadRequestException, UseGuards, Body, Query, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  UseGuards,
+  Body,
+  Query,
+  Param,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentsService } from './documents.service';
 import { AuthGuard } from '../common/guards/auth.guard';
@@ -7,7 +19,7 @@ import { CurrentUserId } from '../common/decorators/user.decorator';
 @Controller('documents')
 @UseGuards(AuthGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) { }
+  constructor(private readonly documentsService: DocumentsService) {}
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -26,7 +38,13 @@ export class DocumentsController {
       throw new BadRequestException('Only PDF files are allowed');
     }
 
-    return this.documentsService.uploadDocument(file, userId, topicId, folderId, tags);
+    return this.documentsService.uploadDocument(
+      file,
+      userId,
+      topicId,
+      folderId,
+      tags,
+    );
   }
 
   @Get()
@@ -39,12 +57,12 @@ export class DocumentsController {
     @Query('search') search?: string,
   ) {
     return this.documentsService.findAllDocuments(
-      userId, 
-      topicId, 
+      userId,
+      topicId,
       folderId,
-      Number(page) || 1, 
+      Number(page) || 1,
       Number(limit) || 10,
-      search
+      search,
     );
   }
 
@@ -58,23 +76,28 @@ export class DocumentsController {
     @Query('search') search?: string,
   ) {
     return this.documentsService.findAllItems(
-      userId, 
-      topicId, 
+      userId,
+      topicId,
       folderId,
-      Number(page) || 1, 
+      Number(page) || 1,
       Number(limit) || 10,
-      search
+      search,
     );
   }
 
   @Get(':id')
-  async findOneDocument(@Param('id') id: string, @CurrentUserId() userId: string) {
+  async findOneDocument(
+    @Param('id') id: string,
+    @CurrentUserId() userId: string,
+  ) {
     return this.documentsService.findOneDocument(id, userId);
   }
 
   @Delete(':id')
-  async deleteDocument(@Param('id') id: string, @CurrentUserId() userId: string) {
+  async deleteDocument(
+    @Param('id') id: string,
+    @CurrentUserId() userId: string,
+  ) {
     return this.documentsService.deleteDocument(id, userId);
   }
 }
-
