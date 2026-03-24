@@ -18,6 +18,7 @@ import { AnnotationsModule } from './annotations/annotations.module';
 import { Annotation } from './typeorm/entities/Annotation.entity';
 import { FoldersModule } from './folders/folders.module';
 import { Folder } from './typeorm/entities/Folder.entity';
+import { RagModule } from './rag/rag.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { Folder } from './typeorm/entities/Folder.entity';
     MessagesModule,
     AnnotationsModule,
     FoldersModule,
+    RagModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,

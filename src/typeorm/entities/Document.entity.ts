@@ -69,6 +69,9 @@ export class Document {
   @Column('json', { name: 'tags', nullable: true })
   tags: string[];
 
+  @Column('boolean', { name: 'isVectorized', default: false })
+  isVectorized: boolean;
+
   @OneToMany(() => Message, (message) => message.document)
   messages: Message[];
 
