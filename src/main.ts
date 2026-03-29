@@ -8,6 +8,11 @@ async function bootstrap() {
     bodyParser: false,
   });
 
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+  });
+
   if (!dataSource.isInitialized) {
     await dataSource.initialize();
   }
