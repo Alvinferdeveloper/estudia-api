@@ -4,9 +4,10 @@ import { MessagesService } from './messages.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Message } from '../typeorm/entities/Message.entity';
 import { Document } from '../typeorm/entities/Document.entity';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Message, Document])],
+  imports: [TypeOrmModule.forFeature([Message, Document]), SubscriptionsModule],
   controllers: [MessagesController],
   providers: [MessagesService],
   exports: [MessagesService],

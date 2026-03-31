@@ -19,6 +19,9 @@ import { Annotation } from './typeorm/entities/Annotation.entity';
 import { FoldersModule } from './folders/folders.module';
 import { Folder } from './typeorm/entities/Folder.entity';
 import { RagModule } from './rag/rag.module';
+import { Subscription } from './typeorm/entities/Subscription.entity';
+import { Plan } from './typeorm/entities/Plan.entity';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -29,6 +32,7 @@ import { RagModule } from './rag/rag.module';
     AnnotationsModule,
     FoldersModule,
     RagModule,
+    SubscriptionsModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
@@ -46,6 +50,8 @@ import { RagModule } from './rag/rag.module';
         Message,
         Annotation,
         Folder,
+        Subscription,
+        Plan,
       ],
       synchronize: true,
       timezone: 'Z',

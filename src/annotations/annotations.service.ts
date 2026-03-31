@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Annotation } from '../typeorm/entities/Annotation.entity';
+import { Document } from '../typeorm/entities/Document.entity';
 
 @Injectable()
 export class AnnotationsService {
@@ -10,7 +11,8 @@ export class AnnotationsService {
     private annotationRepository: Repository<Annotation>,
   ) {}
 
-  async findByDocument(documentId: string): Promise<Annotation[]> {
+  async findByDocument(documentId: string, userId: string): Promise<Annotation[]> {
+    await this.verifyDocumentAccess(documentId, userId);
     return this.annotationRepository.find({
       where: { documentId },
       order: { pageNumber: 'ASC' },
@@ -20,7 +22,9 @@ export class AnnotationsService {
   async findByPage(
     documentId: string,
     pageNumber: number,
+    userId: string,
   ): Promise<Annotation[]> {
+    await this.verifyDocumentAccess(documentId, userId);
     return this.annotationRepository.find({
       where: { documentId, pageNumber },
     });
@@ -51,8 +55,10 @@ export class AnnotationsService {
       pageNumber: number;
     }[];
     documentId: string;
+    userId: string;
     embedding?: string | null;
   }): Promise<Annotation> {
+    await this.verifyDocumentAccess(data.documentId, data.userId);
     const annotation = this.annotationRepository.create({
       selectedText: data.selectedText,
       comment: data.comment || null,
@@ -69,6 +75,7 @@ export class AnnotationsService {
 
   async update(
     id: string,
+    userId: string,
     data: Partial<{
       comment: string | null;
       aiResponse: string | null;
@@ -93,11 +100,33 @@ export class AnnotationsService {
       }[];
     }>,
   ): Promise<Annotation | null> {
+    const annotation = await this.annotationRepository.findOneBy({ id });
+    if (!annotation) {
+      return null;
+    }
+    await this.verifyDocumentAccess(annotation.documentId, userId);
     await this.annotationRepository.update(id, data);
     return this.annotationRepository.findOneBy({ id });
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, userId: string): Promise<void> {
+    const annotation = await this.annotationRepository.findOneBy({ id });
+    if (!annotation) {
+      return;
+    }
+    await this.verifyDocumentAccess(annotation.documentId, userId);
     await this.annotationRepository.delete(id);
+  }
+
+  private async verifyDocumentAccess(
+    documentId: string,
+    userId: string,
+  ): Promise<void> {
+    const document = await this.annotationRepository.manager.findOne(Document, {
+      where: { id: documentId, userId },
+    });
+    if (!document) {
+      throw new UnauthorizedException('Access to this document is denied');
+    }
   }
 }

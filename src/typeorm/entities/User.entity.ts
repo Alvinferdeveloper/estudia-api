@@ -3,12 +3,14 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   OneToMany,
+  OneToOne,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Document } from './Document.entity';
 import { Topic } from './Topic.entity';
 import { Folder } from './Folder.entity';
+import { Subscription } from './Subscription.entity';
 
 @Entity('user')
 export class User {
@@ -46,4 +48,7 @@ export class User {
 
   @OneToMany(() => Folder, (folder) => folder.user)
   folders: Folder[];
+
+  @OneToOne(() => Subscription, (subscription) => subscription.user)
+  subscription: Subscription;
 }
