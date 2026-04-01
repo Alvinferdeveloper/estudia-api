@@ -21,7 +21,9 @@ import { Folder } from './typeorm/entities/Folder.entity';
 import { RagModule } from './rag/rag.module';
 import { Subscription } from './typeorm/entities/Subscription.entity';
 import { Plan } from './typeorm/entities/Plan.entity';
+import { Payment } from './typeorm/entities/Payment.entity';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     FoldersModule,
     RagModule,
     SubscriptionsModule,
+    PaymentsModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
@@ -52,6 +55,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
         Folder,
         Subscription,
         Plan,
+        Payment,
       ],
       synchronize: true,
       timezone: 'Z',

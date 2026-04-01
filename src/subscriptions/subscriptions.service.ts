@@ -79,8 +79,18 @@ export class SubscriptionsService {
     );
   }
 
-  async updatePlan(userId: string, plan: SubscriptionPlan): Promise<Subscription> {
-    const limits = await this.getPlanLimits(plan);
+  async updatePlan(userId: string, plan: SubscriptionPlan, limits?: {
+    chatMessagesLimit: number;
+    aiNotesLimit: number;
+    documentsLimit: number;
+    storageLimitBytes: number;
+    hasSemanticSearch: boolean;
+    hasVectorization: boolean;
+    hasAdvancedModels: boolean;
+    hasExportNotes: boolean;
+    hasApiAccess: boolean;
+  }): Promise<Subscription> {
+    const planLimits = limits || await this.getPlanLimits(plan);
     const subscription = await this.getOrCreateSubscription(userId);
 
     subscription.plan = plan;
@@ -89,15 +99,15 @@ export class SubscriptionsService {
     subscription.currentPeriodEnd = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000,
     );
-    subscription.chatMessagesLimit = limits.chatMessagesLimit;
-    subscription.aiNotesLimit = limits.aiNotesLimit;
-    subscription.documentsLimit = limits.documentsLimit;
-    subscription.storageLimitBytes = limits.storageLimitBytes;
-    subscription.hasSemanticSearch = limits.hasSemanticSearch;
-    subscription.hasVectorization = limits.hasVectorization;
-    subscription.hasAdvancedModels = limits.hasAdvancedModels;
-    subscription.hasExportNotes = limits.hasExportNotes;
-    subscription.hasApiAccess = limits.hasApiAccess;
+    subscription.chatMessagesLimit = planLimits.chatMessagesLimit;
+    subscription.aiNotesLimit = planLimits.aiNotesLimit;
+    subscription.documentsLimit = planLimits.documentsLimit;
+    subscription.storageLimitBytes = planLimits.storageLimitBytes;
+    subscription.hasSemanticSearch = planLimits.hasSemanticSearch;
+    subscription.hasVectorization = planLimits.hasVectorization;
+    subscription.hasAdvancedModels = planLimits.hasAdvancedModels;
+    subscription.hasExportNotes = planLimits.hasExportNotes;
+    subscription.hasApiAccess = planLimits.hasApiAccess;
 
     return this.subscriptionRepository.save(subscription);
   }
