@@ -83,6 +83,9 @@ export class Subscription {
   @Column('text', { name: 'stripeSubscriptionId', nullable: true })
   stripeSubscriptionId: string;
 
+  @Column('text', { name: 'paypalSubscriptionId', nullable: true })
+  paypalSubscriptionId: string;
+
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 

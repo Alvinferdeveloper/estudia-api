@@ -65,7 +65,14 @@ export class CreatePayment1756412357418 implements MigrationInterface {
           {
             name: 'status',
             type: 'enum',
-            enum: ['pending', 'approved', 'completed', 'failed', 'refunded', 'cancelled'],
+            enum: [
+              'pending',
+              'approved',
+              'completed',
+              'failed',
+              'refunded',
+              'cancelled',
+            ],
             default: 'pending',
           },
           {

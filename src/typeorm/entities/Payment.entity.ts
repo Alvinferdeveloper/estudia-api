@@ -54,6 +54,14 @@ export class Payment {
   @Index()
   paypalOrderId: string | null;
 
+  @Column('varchar', {
+    length: 255,
+    name: 'paypalSubscriptionId',
+    nullable: true,
+  })
+  @Index()
+  paypalSubscriptionId: string | null;
+
   @Column('varchar', { length: 255, name: 'paypalCaptureId', nullable: true })
   paypalCaptureId: string | null;
 

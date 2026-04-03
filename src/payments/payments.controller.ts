@@ -20,7 +20,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly payPalClient: PayPalClient,
-  ) {}
+  ) { }
 
   @Post('create-order')
   @UseGuards(AuthGuard)
@@ -31,6 +31,24 @@ export class PaymentsController {
     return this.paymentsService.createPayment(userId, body.plan);
   }
 
+  @Post('create-subscription')
+  @UseGuards(AuthGuard)
+  async createSubscription(
+    @CurrentUserId() userId: string,
+    @Body() body: { plan: SubscriptionPlan },
+  ) {
+    return this.paymentsService.createSubscription(userId, body.plan);
+  }
+
+  @Post('activate-subscription/:paymentId')
+  @UseGuards(AuthGuard)
+  async activateSubscription(
+    @Param('paymentId') paymentId: string,
+    @CurrentUserId() userId: string,
+  ) {
+    return this.paymentsService.activateUserSubscription(paymentId, userId);
+  }
+
   @Post('capture/:paymentId')
   @UseGuards(AuthGuard)
   async capturePayment(
@@ -38,6 +56,12 @@ export class PaymentsController {
     @CurrentUserId() userId: string,
   ) {
     return this.paymentsService.capturePayment(paymentId, userId);
+  }
+
+  @Post('cancel-subscription')
+  @UseGuards(AuthGuard)
+  async cancelSubscription(@CurrentUserId() userId: string) {
+    return this.paymentsService.cancelUserSubscription(userId);
   }
 
   @Get()
@@ -60,7 +84,9 @@ export class PaymentsController {
     @Headers() headers: Record<string, string>,
     @Req() req: Request,
   ) {
-    const rawBody = (req as unknown as { rawBody?: Buffer }).rawBody?.toString() || JSON.stringify(req.body);
+    const rawBody =
+      (req as unknown as { rawBody?: Buffer }).rawBody?.toString() ||
+      JSON.stringify(req.body);
 
     const isValid = await this.payPalClient.verifyWebhookSignature(
       headers,

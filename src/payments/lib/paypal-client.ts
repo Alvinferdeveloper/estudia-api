@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import { SubscriptionPlan } from '../../typeorm/entities/Payment.entity';
 
@@ -40,6 +36,36 @@ export interface PayPalCaptureResponse {
   };
 }
 
+export interface PayPalSubscriptionResponse {
+  id: string;
+  status: string;
+  plan_id: string;
+  start_time: string;
+  subscriber?: {
+    email_address?: string;
+    payer_id?: string;
+  };
+  links: Array<{ rel: string; href: string }>;
+}
+
+export interface PayPalSubscriptionPlanResponse {
+  id: string;
+  product_id: string;
+  name: string;
+  status: string;
+  billing_cycles: Array<{
+    frequency: { interval_unit: string; interval_count: number };
+    tenure_type: string;
+    sequence: number;
+    total_cycles: number;
+    pricing_scheme: { fixed_price: { value: string; currency_code: string } };
+  }>;
+  payment_preferences: {
+    auto_bill_outstanding: boolean;
+    setup_fee: { value: string; currency_code: string };
+  };
+}
+
 @Injectable()
 export class PayPalClient implements OnModuleInit {
   private readonly logger = new Logger(PayPalClient.name);
@@ -50,13 +76,14 @@ export class PayPalClient implements OnModuleInit {
   private readonly baseUrlSandbox = 'https://api-m.sandbox.paypal.com';
   private readonly baseUrlLive = 'https://api-m.paypal.com';
 
-  constructor(private config: PayPalConfig) {}
+  constructor(private config: PayPalConfig) { }
 
   onModuleInit() {
     this.validateConfig();
 
     this.client = axios.create({
-      baseURL: this.config.mode === 'sandbox' ? this.baseUrlSandbox : this.baseUrlLive,
+      baseURL:
+        this.config.mode === 'sandbox' ? this.baseUrlSandbox : this.baseUrlLive,
     });
 
     this.logger.log(`PayPal initialized in ${this.config.mode} mode`);
@@ -170,18 +197,18 @@ export class PayPalClient implements OnModuleInit {
     const token = await this.getAccessToken();
 
     try {
-      const response = await this.client.get(
-        `/v2/checkout/orders/${orderId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await this.client.get(`/v2/checkout/orders/${orderId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       return response.data;
     } catch (error) {
-      this.logger.error(`Failed to get PayPal order details: ${orderId}`, error);
+      this.logger.error(
+        `Failed to get PayPal order details: ${orderId}`,
+        error,
+      );
       throw new Error('Failed to get PayPal order details');
     }
   }
@@ -230,7 +257,9 @@ export class PayPalClient implements OnModuleInit {
     body: string,
   ): Promise<boolean> {
     if (!this.config.webhookId) {
-      this.logger.error('No webhook ID configured, rejecting verification. Please set PAYPAL_WEBHOOK_ID.');
+      this.logger.error(
+        'No webhook ID configured, rejecting verification. Please set PAYPAL_WEBHOOK_ID.',
+      );
       return false;
     }
 
@@ -266,6 +295,59 @@ export class PayPalClient implements OnModuleInit {
     }
   }
 
+  async getSubscriptionDetails(
+    subscriptionId: string,
+  ): Promise<PayPalSubscriptionResponse> {
+    const token = await this.getAccessToken();
+
+    try {
+      const response = await this.client.get(
+        `/v1/billing/subscriptions/${subscriptionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get PayPal subscription details: ${subscriptionId}`,
+        error,
+      );
+      throw new Error('Failed to get PayPal subscription details');
+    }
+  }
+
+  async cancelSubscription(
+    subscriptionId: string,
+    reason: string = 'User requested cancellation',
+  ): Promise<void> {
+    const token = await this.getAccessToken();
+
+    try {
+      await this.client.post(
+        `/v1/billing/subscriptions/${subscriptionId}/cancel`,
+        { reason },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      this.logger.log(`Cancelled PayPal subscription: ${subscriptionId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to cancel PayPal subscription: ${subscriptionId}`,
+        error,
+      );
+      throw new Error('Failed to cancel PayPal subscription');
+    }
+  }
+
   getPlanPrice(plan: SubscriptionPlan): number {
     const prices: Record<SubscriptionPlan, number> = {
       [SubscriptionPlan.FREE]: 0,
@@ -274,5 +356,89 @@ export class PayPalClient implements OnModuleInit {
       [SubscriptionPlan.ENTERPRISE]: 99,
     };
     return prices[plan];
+  }
+
+  async createSubscription(
+    planId: string,
+    userId: string,
+  ): Promise<PayPalSubscriptionResponse> {
+    const token = await this.getAccessToken();
+
+    try {
+      const response = await this.client.post(
+        '/v1/billing/subscriptions',
+        {
+          plan_id: planId,
+          subscriber: {
+            custom_id: userId,
+          },
+          application_context: {
+            brand_name: 'estudiIA',
+            locale: 'en-US',
+            payment_method: {
+              payer_selected: 'PAYPAL',
+              payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED',
+            },
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      this.logger.log(`Created PayPal subscription: ${response.data.id}`);
+      return response.data;
+    } catch (error) {
+      this.logger.error('Failed to create PayPal subscription', error);
+      throw new Error('Failed to create PayPal subscription');
+    }
+  }
+
+  async activateSubscription(
+    subscriptionId: string,
+  ): Promise<PayPalSubscriptionResponse> {
+    const token = await this.getAccessToken();
+
+    try {
+      const response = await this.client.post(
+        `/v1/billing/subscriptions/${subscriptionId}/activate`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      this.logger.log(`Activated PayPal subscription: ${subscriptionId}`);
+      return response.data;
+    } catch (error) {
+      this.logger.error(
+        `Failed to activate PayPal subscription: ${subscriptionId}`,
+        error,
+      );
+      throw new Error('Failed to activate PayPal subscription');
+    }
+  }
+
+  async getPlanIdForSubscription(plan: SubscriptionPlan): Promise<string> {
+    const planIds: Record<SubscriptionPlan, string> = {
+      [SubscriptionPlan.FREE]: '',
+      [SubscriptionPlan.BASIC]: process.env.PAYPAL_PLAN_BASIC_ID || '',
+      [SubscriptionPlan.PRO]: process.env.PAYPAL_PLAN_PRO_ID || '',
+      [SubscriptionPlan.ENTERPRISE]:
+        process.env.PAYPAL_PLAN_ENTERPRISE_ID || '',
+    };
+
+    const planId = planIds[plan];
+    if (!planId) {
+      throw new Error(`No PayPal plan ID configured for ${plan}`);
+    }
+
+    return planId;
   }
 }
