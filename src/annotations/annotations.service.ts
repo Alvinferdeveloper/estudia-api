@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import PDFDocument from 'pdfkit';
+import ankiExport from 'anki-apkg-export';
 import { Annotation } from '../typeorm/entities/Annotation.entity';
 import { Document } from '../typeorm/entities/Document.entity';
 import { cleanMarkdownText } from '../common/utils/clean-text.util';
@@ -142,11 +143,19 @@ export class AnnotationsService {
   async exportAnnotations(
     annotations: Annotation[],
     document: Document | null,
-    format: 'markdown' | 'json' | 'csv' | 'pdf',
+    format: 'markdown' | 'json' | 'csv' | 'pdf' | 'anki',
   ): Promise<{ content: string; contentType: string; fileName: string }> {
     const fileName = document?.fileName || 'document';
 
     switch (format) {
+      case 'anki':
+        const ankiBuffer = await this.generateAnkiDeck(annotations, document);
+        return {
+          content: ankiBuffer.toString('base64'),
+          contentType: 'application/apkg',
+          fileName: `${fileName}-flashcards.apkg`,
+        };
+
       case 'json':
         const cleanAnnotations = annotations.map(a => ({
           ...a,
@@ -471,5 +480,33 @@ export class AnnotationsService {
     }
 
     return lines.join('\n');
+  }
+
+  private async generateAnkiDeck(annotations: Annotation[], document: Document | null) {
+    const deckName = document?.fileName
+      ? `studiIA - ${document.fileName.replace(/\.pdf$/i, '')}`
+      : 'studiIA - Notes';
+
+    const deck = new ankiExport(deckName);
+
+    const annotationsWithAi = annotations.filter(a => a.aiResponse);
+
+    if (annotationsWithAi.length === 0) {
+      deck.addCard(
+        'No AI notes available',
+        'Add notes with AI explanations to generate flashcards'
+      );
+    } else {
+      for (const note of annotationsWithAi) {
+        const front = cleanMarkdownText(note.selectedText).substring(0, 500);
+        const back = cleanMarkdownText(note.aiResponse).substring(0, 1000);
+
+        deck.addCard(front, back);
+      }
+    }
+
+    const zip = await deck.save();
+
+    return Buffer.from(zip);
   }
 }
