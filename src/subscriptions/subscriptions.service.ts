@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Subscription, SubscriptionPlan } from '../typeorm/entities/Subscription.entity';
+import {
+  Subscription,
+  SubscriptionPlan,
+} from '../typeorm/entities/Subscription.entity';
 import { Plan } from '../typeorm/entities/Plan.entity';
 
 @Injectable()
@@ -11,7 +14,7 @@ export class SubscriptionsService {
     private subscriptionRepository: Repository<Subscription>,
     @InjectRepository(Plan)
     private planRepository: Repository<Plan>,
-  ) { }
+  ) {}
 
   async getOrCreateSubscription(userId: string): Promise<Subscription> {
     let subscription = await this.subscriptionRepository.findOne({
@@ -72,25 +75,25 @@ export class SubscriptionsService {
   }
 
   async incrementAiNoteUsage(userId: string): Promise<void> {
-    await this.subscriptionRepository.increment(
-      { userId },
-      'aiNotesUsed',
-      1,
-    );
+    await this.subscriptionRepository.increment({ userId }, 'aiNotesUsed', 1);
   }
 
-  async updatePlan(userId: string, plan: SubscriptionPlan, limits?: {
-    chatMessagesLimit: number;
-    aiNotesLimit: number;
-    documentsLimit: number;
-    storageLimitBytes: number;
-    hasSemanticSearch: boolean;
-    hasVectorization: boolean;
-    hasAdvancedModels: boolean;
-    hasExportNotes: boolean;
-    hasApiAccess: boolean;
-  }): Promise<Subscription> {
-    const planLimits = limits || await this.getPlanLimits(plan);
+  async updatePlan(
+    userId: string,
+    plan: SubscriptionPlan,
+    limits?: {
+      chatMessagesLimit: number;
+      aiNotesLimit: number;
+      documentsLimit: number;
+      storageLimitBytes: number;
+      hasSemanticSearch: boolean;
+      hasVectorization: boolean;
+      hasAdvancedModels: boolean;
+      hasExportNotes: boolean;
+      hasApiAccess: boolean;
+    },
+  ): Promise<Subscription> {
+    const planLimits = limits || (await this.getPlanLimits(plan));
     const subscription = await this.getOrCreateSubscription(userId);
 
     subscription.plan = plan;
@@ -121,12 +124,18 @@ export class SubscriptionsService {
       chat: {
         used: subscription.chatMessagesUsed,
         limit: subscription.chatMessagesLimit,
-        remaining: Math.max(0, subscription.chatMessagesLimit - subscription.chatMessagesUsed),
+        remaining: Math.max(
+          0,
+          subscription.chatMessagesLimit - subscription.chatMessagesUsed,
+        ),
       },
       aiNotes: {
         used: subscription.aiNotesUsed,
         limit: subscription.aiNotesLimit,
-        remaining: Math.max(0, subscription.aiNotesLimit - subscription.aiNotesUsed),
+        remaining: Math.max(
+          0,
+          subscription.aiNotesLimit - subscription.aiNotesUsed,
+        ),
       },
       documents: {
         limit: subscription.documentsLimit,

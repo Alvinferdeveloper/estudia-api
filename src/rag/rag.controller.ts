@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { RagService } from './rag.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
@@ -6,7 +14,7 @@ import { CurrentUserId } from '../common/decorators/user.decorator';
 @Controller('documents')
 @UseGuards(AuthGuard)
 export class RagController {
-  constructor(private readonly ragService: RagService) { }
+  constructor(private readonly ragService: RagService) {}
 
   @Post(':id/vectorize')
   async vectorizeDocument(
@@ -14,7 +22,10 @@ export class RagController {
     @CurrentUserId() userId: string,
   ) {
     try {
-      const result = await this.ragService.vectorizeDocument(documentId, userId);
+      const result = await this.ragService.vectorizeDocument(
+        documentId,
+        userId,
+      );
       return { success: true, ...result };
     } catch (error: any) {
       throw new BadRequestException(error.message);

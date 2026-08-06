@@ -34,7 +34,7 @@ export class ExamService {
     private resultRepository: Repository<ExamResult>,
     @InjectRepository(Document)
     private documentRepository: Repository<Document>,
-  ) { }
+  ) {}
 
   async createExam(userId: string, dto: CreateExamDto): Promise<Exam> {
     await this.verifyDocumentAccess(dto.documentId, userId);
@@ -53,15 +53,26 @@ export class ExamService {
     return this.examRepository.save(exam);
   }
 
-  async addQuestions(examId: string, questions: { text: string; type: string; options?: string; idealAnswer: string; order: number }[]): Promise<void> {
-    const questionEntities = questions.map(q => this.questionRepository.create({
-      examId,
-      text: q.text,
-      type: q.type as QuestionType,
-      options: q.options || null,
-      idealAnswer: q.idealAnswer,
-      order: q.order,
-    }));
+  async addQuestions(
+    examId: string,
+    questions: {
+      text: string;
+      type: string;
+      options?: string;
+      idealAnswer: string;
+      order: number;
+    }[],
+  ): Promise<void> {
+    const questionEntities = questions.map((q) =>
+      this.questionRepository.create({
+        examId,
+        text: q.text,
+        type: q.type as QuestionType,
+        options: q.options || null,
+        idealAnswer: q.idealAnswer,
+        order: q.order,
+      }),
+    );
 
     await this.questionRepository.save(questionEntities);
   }
@@ -115,7 +126,10 @@ export class ExamService {
     return this.getExamQuestions(examId);
   }
 
-  private async verifyDocumentAccess(documentId: string, userId: string): Promise<void> {
+  private async verifyDocumentAccess(
+    documentId: string,
+    userId: string,
+  ): Promise<void> {
     const document = await this.documentRepository.findOne({
       where: { id: documentId, userId },
     });

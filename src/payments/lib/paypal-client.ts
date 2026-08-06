@@ -76,7 +76,7 @@ export class PayPalClient implements OnModuleInit {
   private readonly baseUrlSandbox = 'https://api-m.sandbox.paypal.com';
   private readonly baseUrlLive = 'https://api-m.paypal.com';
 
-  constructor(private config: PayPalConfig) { }
+  constructor(private config: PayPalConfig) {}
 
   onModuleInit() {
     this.validateConfig();

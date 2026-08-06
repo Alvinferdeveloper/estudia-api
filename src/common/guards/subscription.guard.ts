@@ -18,9 +18,7 @@ export enum SubscriptionFeature {
 
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
-  constructor(
-    private subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private subscriptionsService: SubscriptionsService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -30,8 +28,9 @@ export class SubscriptionGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    const subscription = await this.subscriptionsService.getOrCreateSubscription(userId);
-    
+    const subscription =
+      await this.subscriptionsService.getOrCreateSubscription(userId);
+
     if (!subscription.isActive) {
       throw new ForbiddenException('Subscription is not active');
     }
@@ -43,36 +42,34 @@ export class SubscriptionGuard implements CanActivate {
 
 @Injectable()
 export class FeatureGuard implements CanActivate {
-  constructor(
-    private subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private subscriptionsService: SubscriptionsService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const userId = request.user?.id;
-    const feature = request.route?.path?.split('/').pop() as SubscriptionFeature;
+    const feature = request.route?.path
+      ?.split('/')
+      .pop() as SubscriptionFeature;
 
     if (!userId) {
       throw new ForbiddenException('User not authenticated');
     }
 
-    const subscription = await this.subscriptionsService.getOrCreateSubscription(userId);
+    const subscription =
+      await this.subscriptionsService.getOrCreateSubscription(userId);
 
     const featureChecks: Record<string, () => boolean> = {
-      [SubscriptionFeature.CHAT]: () => 
+      [SubscriptionFeature.CHAT]: () =>
         subscription.chatMessagesUsed < subscription.chatMessagesLimit,
-      [SubscriptionFeature.AI_NOTE]: () => 
+      [SubscriptionFeature.AI_NOTE]: () =>
         subscription.aiNotesUsed < subscription.aiNotesLimit,
-      [SubscriptionFeature.SEMANTIC_SEARCH]: () => 
+      [SubscriptionFeature.SEMANTIC_SEARCH]: () =>
         subscription.hasSemanticSearch,
-      [SubscriptionFeature.VECTORIZATION]: () => 
-        subscription.hasVectorization,
-      [SubscriptionFeature.ADVANCED_MODELS]: () => 
+      [SubscriptionFeature.VECTORIZATION]: () => subscription.hasVectorization,
+      [SubscriptionFeature.ADVANCED_MODELS]: () =>
         subscription.hasAdvancedModels,
-      [SubscriptionFeature.EXPORT_NOTES]: () => 
-        subscription.hasExportNotes,
-      [SubscriptionFeature.API_ACCESS]: () => 
-        subscription.hasApiAccess,
+      [SubscriptionFeature.EXPORT_NOTES]: () => subscription.hasExportNotes,
+      [SubscriptionFeature.API_ACCESS]: () => subscription.hasApiAccess,
     };
 
     const check = featureChecks[feature];

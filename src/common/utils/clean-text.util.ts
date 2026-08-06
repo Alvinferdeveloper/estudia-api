@@ -1,6 +1,6 @@
 export function cleanMarkdownText(text: string | null): string {
   if (!text) return '';
-  
+
   return text
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/\*\*(.+?)\*\*/g, '$1')

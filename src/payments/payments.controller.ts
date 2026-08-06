@@ -20,7 +20,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly payPalClient: PayPalClient,
-  ) { }
+  ) {}
 
   @Post('create-order')
   @UseGuards(AuthGuard)

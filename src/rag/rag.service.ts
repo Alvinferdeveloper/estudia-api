@@ -41,7 +41,11 @@ export class RagService {
     return result.text;
   }
 
-  private chunkText(text: string, chunkSize: number = 500, overlap: number = 50): Chunk[] {
+  private chunkText(
+    text: string,
+    chunkSize: number = 500,
+    overlap: number = 50,
+  ): Chunk[] {
     const pages = text.split(/\f/);
     const chunks: Chunk[] = [];
     let globalIndex = 0;
@@ -92,7 +96,11 @@ export class RagService {
     return result.embedding.values;
   }
 
-  async vectorizeDocument(documentId: string, userId: string): Promise<{ chunksCreated: number }> {
+  async vectorizeDocument(
+    documentId: string,
+    userId: string,
+  ): Promise<{ chunksCreated: number }> {
+    console.log(documentId, userId)
     const document = await this.documentsRepository.findOne({
       where: { id: documentId, userId },
     });
@@ -107,7 +115,7 @@ export class RagService {
       throw new Error('Failed to get document');
     }
 
-    const text = await this.extractTextFromPDF(data.signedUrl!);
+    const text = await this.extractTextFromPDF(data.signedUrl);
 
     if (!text || text.trim().length < 50) {
       throw new Error('No readable text found in PDF');
@@ -121,7 +129,7 @@ export class RagService {
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const embeddings = await Promise.all(
-        batch.map((chunk) => this.generateEmbedding(chunk.content))
+        batch.map((chunk) => this.generateEmbedding(chunk.content)),
       );
 
       const records = batch.map((chunk, idx) => ({
@@ -132,7 +140,9 @@ export class RagService {
         embedding: embeddings[idx],
       }));
 
-      const { error } = await this.supabase.from('document_chunks').insert(records);
+      const { error } = await this.supabase
+        .from('document_chunks')
+        .insert(records);
       if (error) {
         console.error('Supabase insert error:', error);
         throw new Error(`Failed to save chunks: ${error.message}`);
@@ -170,7 +180,10 @@ export class RagService {
       if (!fallbackData) return [];
 
       const scored = fallbackData.map((chunk: any) => {
-        const similarity = this.cosineSimilarity(queryEmbedding, chunk.embedding);
+        const similarity = this.cosineSimilarity(
+          queryEmbedding,
+          chunk.embedding,
+        );
         return {
           content: chunk.content,
           pageNumber: chunk.page_number,
@@ -193,7 +206,9 @@ export class RagService {
 
   private cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-    let dot = 0, magA = 0, magB = 0;
+    let dot = 0,
+      magA = 0,
+      magB = 0;
     for (let i = 0; i < a.length; i++) {
       dot += a[i] * b[i];
       magA += a[i] * a[i];
@@ -210,7 +225,9 @@ export class RagService {
   }
 
   async isDocumentVectorized(documentId: string): Promise<boolean> {
-    const document = await this.documentsRepository.findOne({ where: { id: documentId } });
+    const document = await this.documentsRepository.findOne({
+      where: { id: documentId },
+    });
     return (document as any)?.isVectorized === true;
   }
 }

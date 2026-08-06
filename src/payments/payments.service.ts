@@ -39,7 +39,7 @@ export class PaymentsService {
     private subscriptionRepository: Repository<Subscription>,
     private payPalClient: PayPalClient,
     private subscriptionsService: SubscriptionsService,
-  ) { }
+  ) {}
 
   async createPayment(
     userId: string,

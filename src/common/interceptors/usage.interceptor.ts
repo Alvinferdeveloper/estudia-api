@@ -16,9 +16,7 @@ export enum UsageType {
 
 @Injectable()
 export class UsageInterceptor implements NestInterceptor {
-  constructor(
-    private subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private subscriptionsService: SubscriptionsService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();

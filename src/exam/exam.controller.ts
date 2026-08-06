@@ -31,13 +31,19 @@ interface SaveResultDto {
 
 interface SaveQuestionsDto {
   examId: string;
-  questions: { text: string; type: string; options?: string; idealAnswer: string; order: number }[];
+  questions: {
+    text: string;
+    type: string;
+    options?: string;
+    idealAnswer: string;
+    order: number;
+  }[];
 }
 
 @Controller('exam')
 @UseGuards(AuthGuard)
 export class ExamController {
-  constructor(private readonly examService: ExamService) { }
+  constructor(private readonly examService: ExamService) {}
 
   @Get()
   async getExams(
@@ -48,10 +54,7 @@ export class ExamController {
   }
 
   @Get(':id')
-  async getExam(
-    @CurrentUserId() userId: string,
-    @Param('id') examId: string,
-  ) {
+  async getExam(@CurrentUserId() userId: string, @Param('id') examId: string) {
     return this.examService.getExamById(examId);
   }
 
@@ -84,7 +87,10 @@ export class ExamController {
     @CurrentUserId() userId: string,
     @Body() questionsDto: SaveQuestionsDto,
   ) {
-    await this.examService.addQuestions(questionsDto.examId, questionsDto.questions);
+    await this.examService.addQuestions(
+      questionsDto.examId,
+      questionsDto.questions,
+    );
     return { success: true };
   }
 

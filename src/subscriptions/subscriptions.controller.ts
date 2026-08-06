@@ -17,7 +17,8 @@ export class SubscriptionsController {
   @Get('plans')
   async getPlans(@CurrentUserId() userId: string) {
     const plans = await this.subscriptionsService.getAvailablePlans();
-    const subscription = await this.subscriptionsService.getOrCreateSubscription(userId);
+    const subscription =
+      await this.subscriptionsService.getOrCreateSubscription(userId);
     return { plans, currentPlan: subscription.plan };
   }
 

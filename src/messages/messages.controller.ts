@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
@@ -36,6 +44,10 @@ export class MessagesController {
       await this.subscriptionsService.incrementChatUsage(userId);
     }
 
-    return this.messagesService.createMessage(documentId, userId, createMessageDto);
+    return this.messagesService.createMessage(
+      documentId,
+      userId,
+      createMessageDto,
+    );
   }
 }

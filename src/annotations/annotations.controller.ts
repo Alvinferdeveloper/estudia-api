@@ -144,12 +144,23 @@ export class AnnotationsController {
   @Get('documents/:documentId/annotations/export')
   async export(
     @Param('documentId', ParseUUIDPipe) documentId: string,
-    @Query('format') format: 'markdown' | 'json' | 'csv' | 'pdf' | 'anki' = 'markdown',
+    @Query('format')
+    format: 'markdown' | 'json' | 'csv' | 'pdf' | 'anki' = 'markdown',
     @CurrentUserId() userId: string,
   ) {
-    const annotations = await this.annotationsService.findByDocument(documentId, userId);
-    const document = await this.annotationsService.getDocument(documentId, userId);
-    
-    return this.annotationsService.exportAnnotations(annotations, document, format);
+    const annotations = await this.annotationsService.findByDocument(
+      documentId,
+      userId,
+    );
+    const document = await this.annotationsService.getDocument(
+      documentId,
+      userId,
+    );
+
+    return this.annotationsService.exportAnnotations(
+      annotations,
+      document,
+      format,
+    );
   }
 }

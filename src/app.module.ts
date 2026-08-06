@@ -25,6 +25,7 @@ import { Payment } from './typeorm/entities/Payment.entity';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ExamModule } from './exam/exam.module';
+import { AIModule } from './ai/ai.module';
 import { Exam } from './typeorm/entities/Exam.entity';
 import { ExamQuestion } from './typeorm/entities/ExamQuestion.entity';
 import { ExamResult } from './typeorm/entities/ExamResult.entity';
@@ -41,6 +42,7 @@ import { ExamResult } from './typeorm/entities/ExamResult.entity';
     SubscriptionsModule,
     PaymentsModule,
     ExamModule,
+    AIModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,

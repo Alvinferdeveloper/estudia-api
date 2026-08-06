@@ -13,7 +13,7 @@ export class PlansSeed implements OnModuleInit {
 
   async onModuleInit() {
     const existingPlans = await this.planRepository.count();
-    
+
     if (existingPlans === 0) {
       const plans = [
         {
@@ -125,7 +125,7 @@ export class PlansSeed implements OnModuleInit {
         const plan = this.planRepository.create(planData);
         await this.planRepository.save(plan);
       }
-      
+
       console.log('✅ Plans seeded successfully');
     }
   }

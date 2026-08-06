@@ -8,7 +8,9 @@ import { ExamController } from './exam.controller';
 import { ExamService } from './exam.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Exam, ExamQuestion, ExamResult, Document])],
+  imports: [
+    TypeOrmModule.forFeature([Exam, ExamQuestion, ExamResult, Document]),
+  ],
   controllers: [ExamController],
   providers: [ExamService],
   exports: [ExamService],

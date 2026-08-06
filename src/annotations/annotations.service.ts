@@ -12,9 +12,12 @@ export class AnnotationsService {
   constructor(
     @InjectRepository(Annotation)
     private annotationRepository: Repository<Annotation>,
-  ) { }
+  ) {}
 
-  async findByDocument(documentId: string, userId: string): Promise<Annotation[]> {
+  async findByDocument(
+    documentId: string,
+    userId: string,
+  ): Promise<Annotation[]> {
     await this.verifyDocumentAccess(documentId, userId);
     return this.annotationRepository.find({
       where: { documentId },
@@ -133,7 +136,10 @@ export class AnnotationsService {
     }
   }
 
-  async getDocument(documentId: string, userId: string): Promise<Document | null> {
+  async getDocument(
+    documentId: string,
+    userId: string,
+  ): Promise<Document | null> {
     await this.verifyDocumentAccess(documentId, userId);
     return this.annotationRepository.manager.findOne(Document, {
       where: { id: documentId, userId },
@@ -157,7 +163,7 @@ export class AnnotationsService {
         };
 
       case 'json':
-        const cleanAnnotations = annotations.map(a => ({
+        const cleanAnnotations = annotations.map((a) => ({
           ...a,
           aiResponse: cleanMarkdownText(a.aiResponse),
           comment: a.comment ? cleanMarkdownText(a.comment) : null,
@@ -169,11 +175,15 @@ export class AnnotationsService {
         };
 
       case 'csv':
-        const escapeCsv = (str: string | null) => `"${(str || '').replace(/"/g, '""')}"`;
-        const csvHeader = 'Page,Selected Text,Comment,AI Response,Color,Created At\n';
-        const csvRows = annotations.map(a => {
-          return `${a.pageNumber},${escapeCsv(a.selectedText)},${escapeCsv(cleanMarkdownText(a.comment))},${escapeCsv(cleanMarkdownText(a.aiResponse))},${escapeCsv(a.color)},${a.createdAt}`;
-        }).join('\n');
+        const escapeCsv = (str: string | null) =>
+          `"${(str || '').replace(/"/g, '""')}"`;
+        const csvHeader =
+          'Page,Selected Text,Comment,AI Response,Color,Created At\n';
+        const csvRows = annotations
+          .map((a) => {
+            return `${a.pageNumber},${escapeCsv(a.selectedText)},${escapeCsv(cleanMarkdownText(a.comment))},${escapeCsv(cleanMarkdownText(a.aiResponse))},${escapeCsv(a.color)},${a.createdAt}`;
+          })
+          .join('\n');
         return {
           content: csvHeader + csvRows,
           contentType: 'text/csv',
@@ -199,7 +209,10 @@ export class AnnotationsService {
     }
   }
 
-  private generatePdf(annotations: Annotation[], document: Document | null): Promise<Buffer> {
+  private generatePdf(
+    annotations: Annotation[],
+    document: Document | null,
+  ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       try {
         const chunks: Buffer[] = [];
@@ -254,7 +267,7 @@ export class AnnotationsService {
               month: 'long',
               day: 'numeric',
             }),
-            { align: 'center' }
+            { align: 'center' },
           );
 
         doc.moveDown(0.5);
@@ -277,16 +290,20 @@ export class AnnotationsService {
         doc.addPage();
 
         // --- Grouped by Page ---
-        const groupedByPage = annotations.reduce((acc, a) => {
-          if (!acc[a.pageNumber]) acc[a.pageNumber] = [];
-          acc[a.pageNumber].push(a);
-          return acc;
-        }, {} as Record<number, Annotation[]>);
+        const groupedByPage = annotations.reduce(
+          (acc, a) => {
+            if (!acc[a.pageNumber]) acc[a.pageNumber] = [];
+            acc[a.pageNumber].push(a);
+            return acc;
+          },
+          {} as Record<number, Annotation[]>,
+        );
 
         let noteIndex = 1;
 
-        for (const pageNum of Object.keys(groupedByPage).sort((a, b) => Number(a) - Number(b))) {
-
+        for (const pageNum of Object.keys(groupedByPage).sort(
+          (a, b) => Number(a) - Number(b),
+        )) {
           // --- Page Header ---
           doc
             .fontSize(13)
@@ -301,7 +318,6 @@ export class AnnotationsService {
           doc.moveDown(1.5);
 
           for (const note of groupedByPage[Number(pageNum)]) {
-
             // Basic page break
             if (doc.y > doc.page.height - 120) doc.addPage();
 
@@ -314,10 +330,7 @@ export class AnnotationsService {
             doc.moveDown(0.5);
 
             // --- SELECTED TEXT ---
-            doc
-              .fontSize(9)
-              .fillColor('#9CA3AF')
-              .text('SELECTED TEXT', marginX);
+            doc.fontSize(9).fillColor('#9CA3AF').text('SELECTED TEXT', marginX);
 
             doc.moveDown(0.3);
 
@@ -350,20 +363,14 @@ export class AnnotationsService {
 
             // --- COMMENT ---
             if (note.comment) {
-              doc
-                .fontSize(9)
-                .fillColor('#9CA3AF')
-                .text('COMMENT', marginX);
+              doc.fontSize(9).fillColor('#9CA3AF').text('COMMENT', marginX);
 
               doc.moveDown(0.3);
 
-              doc
-                .fontSize(11)
-                .fillColor('#374151')
-                .text(note.comment, {
-                  width: contentWidth,
-                  lineGap: 3,
-                });
+              doc.fontSize(11).fillColor('#374151').text(note.comment, {
+                width: contentWidth,
+                lineGap: 3,
+              });
 
               doc.moveDown(1.5);
             }
@@ -430,7 +437,7 @@ export class AnnotationsService {
               {
                 align: 'center',
                 width: contentWidth,
-              }
+              },
             );
         }
 
@@ -440,7 +447,10 @@ export class AnnotationsService {
       }
     });
   }
-  private generateMarkdown(annotations: Annotation[], document: Document | null): string {
+  private generateMarkdown(
+    annotations: Annotation[],
+    document: Document | null,
+  ): string {
     const lines: string[] = [];
 
     lines.push(`# Notes: ${document?.fileName || 'Document'}\n`);
@@ -452,15 +462,20 @@ export class AnnotationsService {
       return lines.join('\n');
     }
 
-    const groupedByPage = annotations.reduce((acc, a) => {
-      if (!acc[a.pageNumber]) {
-        acc[a.pageNumber] = [];
-      }
-      acc[a.pageNumber].push(a);
-      return acc;
-    }, {} as Record<number, Annotation[]>);
+    const groupedByPage = annotations.reduce(
+      (acc, a) => {
+        if (!acc[a.pageNumber]) {
+          acc[a.pageNumber] = [];
+        }
+        acc[a.pageNumber].push(a);
+        return acc;
+      },
+      {} as Record<number, Annotation[]>,
+    );
 
-    for (const pageNum of Object.keys(groupedByPage).sort((a, b) => Number(a) - Number(b))) {
+    for (const pageNum of Object.keys(groupedByPage).sort(
+      (a, b) => Number(a) - Number(b),
+    )) {
       lines.push(`## Page ${pageNum}\n`);
 
       for (const note of groupedByPage[Number(pageNum)]) {
@@ -482,19 +497,22 @@ export class AnnotationsService {
     return lines.join('\n');
   }
 
-  private async generateAnkiDeck(annotations: Annotation[], document: Document | null) {
+  private async generateAnkiDeck(
+    annotations: Annotation[],
+    document: Document | null,
+  ) {
     const deckName = document?.fileName
       ? `studiIA - ${document.fileName.replace(/\.pdf$/i, '')}`
       : 'studiIA - Notes';
 
     const deck = new ankiExport(deckName);
 
-    const annotationsWithAi = annotations.filter(a => a.aiResponse);
+    const annotationsWithAi = annotations.filter((a) => a.aiResponse);
 
     if (annotationsWithAi.length === 0) {
       deck.addCard(
         'No AI notes available',
-        'Add notes with AI explanations to generate flashcards'
+        'Add notes with AI explanations to generate flashcards',
       );
     } else {
       for (const note of annotationsWithAi) {
