@@ -158,7 +158,12 @@ export class AIService {
         const jsonMatch = text.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          allQuestions = [...allQuestions, ...parsed];
+          const withType = parsed.map((q: any) => ({
+            ...q,
+            type, // Force the requested type, ignoring the LLM's output
+            idealAnswer: String(q.correctAnswer ?? q.idealAnswer ?? ''),
+          }));
+          allQuestions = [...allQuestions, ...withType];
         }
       } catch (e) {
         this.logger.error(`Failed to generate ${type} questions:`, e);
@@ -166,11 +171,7 @@ export class AIService {
     }
 
     const shuffled = allQuestions.sort(() => Math.random() - 0.5);
-    return shuffled.map((q, i) => ({
-      ...q,
-      type: this.normalizeQuestionType(q.type, types[i % types.length]),
-      idealAnswer: q.correctAnswer || q.idealAnswer || '',
-    }));
+    return shuffled;
   }
 
   private normalizeQuestionType(
@@ -216,8 +217,8 @@ export class AIService {
         const questions = JSON.parse(jsonMatch[0]);
         return questions.map((q: any) => ({
           ...q,
-          type: this.normalizeQuestionType(q.type, type || 'open'),
-          idealAnswer: q.correctAnswer || q.idealAnswer || '',
+          type: type || 'open', // Force the requested type
+          idealAnswer: String(q.correctAnswer ?? q.idealAnswer ?? ''),
         }));
       }
     } catch (e) {
@@ -242,8 +243,20 @@ export class AIService {
     ].includes(questionType || '');
 
     if (isClosedType) {
-      const isCorrect =
-        userAnswer.toLowerCase().trim() === idealAnswer.toLowerCase().trim();
+      const normalizedUser = String(userAnswer).toLowerCase().trim();
+      const normalizedIdeal = String(idealAnswer).toLowerCase().trim();
+
+      let isCorrect = normalizedUser === normalizedIdeal;
+
+      if (questionType === 'true_false') {
+        const userIsTrue = ['true', 'verdadero', 'v', '1'].includes(normalizedUser);
+        const idealIsTrue = ['true', 'verdadero', 'v', '1'].includes(normalizedIdeal);
+        isCorrect = userIsTrue === idealIsTrue;
+      } else if (questionType === 'multiple_choice') {
+        // Just in case they provide "A) Option" instead of just "A"
+        isCorrect = normalizedUser[0] === normalizedIdeal[0];
+      }
+
       return {
         score: isCorrect ? 10 : 0,
         feedback: isCorrect

@@ -16,15 +16,13 @@ const DIFFICULTY_INSTRUCTIONS: Record<string, string> = {
   hard: 'Generate complex questions that require synthesis, evaluation, and deep understanding.',
 };
 
-const ALLOWED_TYPES =
-  'The "type" field MUST be exactly one of these values: "open", "multiple_choice", "true_false", "fill_blank". Do NOT invent, translate, or rename the type. Use the exact string provided in the example below.';
 
 const TYPE_PROMPTS: Record<Exclude<QuestionType, 'mixed'>, string> = {
   open: 'Generate open-ended questions where the student must provide a detailed written answer.',
   multiple_choice:
     'Generate multiple choice questions with 4 options (A, B, C, D). One option should be correct, others plausible but wrong. Include the correctAnswer field.',
   true_false:
-    'Generate true/false questions where students answer with "true" or "false". Include the correctAnswer field.',
+    'Generate true/false questions where students answer with "true" or "false". Include the correctAnswer field (MUST be exactly the string "true" or "false").',
   fill_blank:
     'Generate fill-in-the-blank questions where students complete a sentence or answer with a short phrase. Include the correctAnswer field.',
 };
@@ -46,6 +44,8 @@ export function buildGenerateQuestionsPrompt({
     DIFFICULTY_INSTRUCTIONS[difficulty] || DIFFICULTY_INSTRUCTIONS.medium;
   const typeInst = TYPE_PROMPTS[type] || TYPE_PROMPTS.open;
 
+  const enforceType = `IMPORTANT: You MUST generate ONLY "${type}" questions. Do not mix question types. The "type" field in your JSON output MUST be exactly "${type}".`;
+
   let formatInstruction = '';
   if (type === 'multiple_choice') {
     formatInstruction = `Format as JSON:\n[\n  {"text": "Question text?", "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"], "correctAnswer": "A", "type": "${type}"}\n]`;
@@ -65,7 +65,7 @@ ${diffInst}
 
 ${typeInst}
 
-${ALLOWED_TYPES}
+${enforceType}
 
 Generate exactly ${count} questions.
 
