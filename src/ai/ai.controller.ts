@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Res,
-  Logger,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Res, Logger } from '@nestjs/common';
 import { Readable } from 'stream';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
@@ -19,7 +12,7 @@ import { NoteDto } from './dto/note.dto';
 export class AIController {
   private readonly logger = new Logger(AIController.name);
 
-  constructor(private readonly aiService: AIService) { }
+  constructor(private readonly aiService: AIService) {}
 
   @Post('chat')
   async chat(
@@ -71,10 +64,7 @@ export class AIController {
   }
 
   @Post('notes/generate')
-  async generateNote(
-    @CurrentUserId() userId: string,
-    @Body() dto: NoteDto,
-  ) {
+  async generateNote(@CurrentUserId() userId: string, @Body() dto: NoteDto) {
     const content = await this.aiService.generateNote(dto);
     return { content };
   }

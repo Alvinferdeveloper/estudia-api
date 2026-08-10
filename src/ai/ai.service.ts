@@ -168,9 +168,26 @@ export class AIService {
     const shuffled = allQuestions.sort(() => Math.random() - 0.5);
     return shuffled.map((q, i) => ({
       ...q,
-      type: q.type || types[i % types.length],
+      type: this.normalizeQuestionType(q.type, types[i % types.length]),
       idealAnswer: q.correctAnswer || q.idealAnswer || '',
     }));
+  }
+
+  private normalizeQuestionType(
+    type: string | undefined,
+    fallback: QuestionType,
+  ): QuestionType {
+    const validTypes: QuestionType[] = [
+      'open',
+      'multiple_choice',
+      'true_false',
+      'fill_blank',
+    ];
+    return validTypes.includes(type as QuestionType)
+      ? (type as QuestionType)
+      : fallback === 'mixed'
+        ? 'open'
+        : fallback;
   }
 
   private async generateSingleTypeQuestions(
@@ -199,7 +216,7 @@ export class AIService {
         const questions = JSON.parse(jsonMatch[0]);
         return questions.map((q: any) => ({
           ...q,
-          type: q.type || type || 'open',
+          type: this.normalizeQuestionType(q.type, type || 'open'),
           idealAnswer: q.correctAnswer || q.idealAnswer || '',
         }));
       }

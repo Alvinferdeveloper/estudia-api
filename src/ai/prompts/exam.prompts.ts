@@ -16,6 +16,9 @@ const DIFFICULTY_INSTRUCTIONS: Record<string, string> = {
   hard: 'Generate complex questions that require synthesis, evaluation, and deep understanding.',
 };
 
+const ALLOWED_TYPES =
+  'The "type" field MUST be exactly one of these values: "open", "multiple_choice", "true_false", "fill_blank". Do NOT invent, translate, or rename the type. Use the exact string provided in the example below.';
+
 const TYPE_PROMPTS: Record<Exclude<QuestionType, 'mixed'>, string> = {
   open: 'Generate open-ended questions where the student must provide a detailed written answer.',
   multiple_choice:
@@ -61,6 +64,8 @@ ${content}
 ${diffInst}
 
 ${typeInst}
+
+${ALLOWED_TYPES}
 
 Generate exactly ${count} questions.
 

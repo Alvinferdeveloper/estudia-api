@@ -39,14 +39,28 @@ export class ExamService {
   async createExam(userId: string, dto: CreateExamDto): Promise<Exam> {
     await this.verifyDocumentAccess(dto.documentId, userId);
 
+    const validTypes = [
+      'open',
+      'multiple_choice',
+      'true_false',
+      'fill_blank',
+      'mixed',
+    ];
+    const validModes = ['quick_review', 'exam_simulation', 'custom'];
+
     const exam = this.examRepository.create({
       userId,
       documentId: dto.documentId,
       pages: dto.pages,
-      mode: dto.mode,
+      mode: (validModes.includes(dto.mode)
+        ? dto.mode
+        : 'quick_review') as ExamMode,
       difficulty: dto.difficulty || 'medium',
       title: dto.title || 'Exam',
-      questionType: dto.questionType || QuestionType.OPEN,
+      questionType:
+        dto.questionType && validTypes.includes(dto.questionType)
+          ? dto.questionType
+          : QuestionType.OPEN,
       totalQuestions: dto.totalQuestions || 5,
     });
 
@@ -63,11 +77,19 @@ export class ExamService {
       order: number;
     }[],
   ): Promise<void> {
+    const validTypes = [
+      'open',
+      'multiple_choice',
+      'true_false',
+      'fill_blank',
+      'mixed',
+    ];
+
     const questionEntities = questions.map((q) =>
       this.questionRepository.create({
         examId,
         text: q.text,
-        type: q.type as QuestionType,
+        type: (validTypes.includes(q.type) ? q.type : 'open') as QuestionType,
         options: q.options || null,
         idealAnswer: q.idealAnswer,
         order: q.order,

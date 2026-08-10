@@ -100,7 +100,7 @@ export class RagService {
     documentId: string,
     userId: string,
   ): Promise<{ chunksCreated: number }> {
-    console.log(documentId, userId)
+    console.log(documentId, userId);
     const document = await this.documentsRepository.findOne({
       where: { id: documentId, userId },
     });
