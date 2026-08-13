@@ -73,6 +73,9 @@ export class Document {
   @Column('boolean', { name: 'isVectorized', default: false })
   isVectorized: boolean;
 
+  @Column('timestamp', { name: 'lastAccessedAt', nullable: true })
+  lastAccessedAt: Date | null;
+
   @OneToMany(() => Message, (message) => message.document)
   messages: Message[];
 

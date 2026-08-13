@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Delete,
+  Patch,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -83,6 +84,28 @@ export class DocumentsController {
       Number(limit) || 10,
       search,
     );
+  }
+
+  @Get('recent')
+  async findRecentDocuments(
+    @CurrentUserId() userId: string,
+    @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
+  ) {
+    return this.documentsService.findRecentDocuments(
+      userId,
+      Number(limit) || 20,
+      search,
+    );
+  }
+
+  @Patch(':id/access')
+  async touchDocument(
+    @Param('id') id: string,
+    @CurrentUserId() userId: string,
+  ) {
+    await this.documentsService.touchDocument(id, userId);
+    return { success: true };
   }
 
   @Get(':id')

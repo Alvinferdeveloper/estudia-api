@@ -245,6 +245,43 @@ export class DocumentsService {
     return { ...document, publicUrl: data?.signedUrl };
   }
 
+  async findRecentDocuments(
+    userId: string,
+    limit: number = 20,
+    search?: string,
+  ): Promise<Document[]> {
+    const queryBuilder = this.documentsRepository
+      .createQueryBuilder('document')
+      .where('document.userId = :userId', { userId });
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(document.fileName LIKE :search OR CAST(document.tags AS CHAR) LIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    return queryBuilder
+      .orderBy(
+        'COALESCE(document.lastAccessedAt, document.createdAt)',
+        'DESC',
+      )
+      .take(limit)
+      .getMany();
+  }
+
+  async touchDocument(id: string, userId: string): Promise<void> {
+    const document = await this.documentsRepository.findOne({
+      where: { id, userId },
+    });
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+    await this.documentsRepository.update(id, {
+      lastAccessedAt: new Date(),
+    });
+  }
+
   async deleteDocument(id: string, userId: string): Promise<void> {
     const document = await this.findOneDocument(id, userId);
 
