@@ -8,12 +8,14 @@ import {
   createTextStreamResponse,
 } from 'ai';
 import type { ModelMessage } from 'ai';
+import { Logger } from '@nestjs/common';
 import type {
   AIProvider,
   AIFeature,
   GenerateTextOptions,
   StreamTextOptions,
 } from './ai-provider.interface';
+import { AIProviderException } from './ai-provider.exception';
 
 const MODELS: Record<AIFeature, string> = {
   chat: 'gemini-2.5-flash',
@@ -23,6 +25,7 @@ const MODELS: Record<AIFeature, string> = {
 };
 
 export class GoogleGeminiProvider implements AIProvider {
+  private readonly logger = new Logger(GoogleGeminiProvider.name);
   private client: ReturnType<typeof createGoogleGenerativeAI>;
 
   constructor(apiKey: string) {
@@ -39,13 +42,26 @@ export class GoogleGeminiProvider implements AIProvider {
       ? messages
       : [{ role: 'user', content: userPrompt || '' }];
 
-    const result = await generateText({
-      model: this.client(MODELS[feature]),
-      system: systemPrompt,
-      messages: modelMessages,
-    });
+    try {
+      const result = await generateText({
+        model: this.client(MODELS[feature]),
+        system: systemPrompt,
+        messages: modelMessages,
+      });
 
-    return result.text;
+      return result.text;
+    } catch (error) {
+      this.logger.error(
+        `generateText failed for feature '${feature}':`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new AIProviderException(
+        `AI provider failed on '${feature}': ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+        error,
+      );
+    }
   }
 
   async streamText({
@@ -53,21 +69,34 @@ export class GoogleGeminiProvider implements AIProvider {
     systemPrompt,
     messages,
   }: StreamTextOptions): Promise<ReadableStream> {
-    const result = streamText({
-      model: this.client(MODELS[feature]),
-      system: systemPrompt,
-      messages,
-    });
+    try {
+      const result = streamText({
+        model: this.client(MODELS[feature]),
+        system: systemPrompt,
+        messages,
+      });
 
-    const response =
-      feature === 'chat'
-        ? createUIMessageStreamResponse({
-            stream: toUIMessageStream({ stream: result.stream }),
-          })
-        : createTextStreamResponse({
-            stream: toTextStream({ stream: result.stream }),
-          });
+      const response =
+        feature === 'chat'
+          ? createUIMessageStreamResponse({
+              stream: toUIMessageStream({ stream: result.stream }),
+            })
+          : createTextStreamResponse({
+              stream: toTextStream({ stream: result.stream }),
+            });
 
-    return response.body!;
+      return response.body!;
+    } catch (error) {
+      this.logger.error(
+        `streamText failed for feature '${feature}':`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new AIProviderException(
+        `AI provider failed to start stream on '${feature}': ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+        error,
+      );
+    }
   }
 }

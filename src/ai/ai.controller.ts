@@ -1,5 +1,6 @@
-import { Controller, Post, Body, UseGuards, Res, Logger } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Res, Req, Logger } from '@nestjs/common';
 import { Readable } from 'stream';
+import type { Request, Response } from 'express';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
 import { AIService } from './ai.service';
@@ -18,7 +19,8 @@ export class AIController {
   async chat(
     @CurrentUserId() userId: string,
     @Body() dto: ChatDto,
-    @Res() res: any,
+    @Req() req: Request,
+    @Res() res: Response,
   ) {
     try {
       const stream = await this.aiService.streamChat(
@@ -33,11 +35,10 @@ export class AIController {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
-      const nodeStream = Readable.fromWeb(stream as any);
-      nodeStream.pipe(res);
+      this.pipeStream(res, req, stream, 'chat');
     } catch (error) {
-      this.logger.error('Chat error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      this.logger.error('Chat failed to start:', this.getStack(error));
+      this.sendError(res, 'Failed to start chat stream');
     }
   }
 
@@ -45,7 +46,8 @@ export class AIController {
   async streamNote(
     @CurrentUserId() userId: string,
     @Body() dto: NoteDto,
-    @Res() res: any,
+    @Req() req: Request,
+    @Res() res: Response,
   ) {
     try {
       const stream = await this.aiService.streamNote(dto);
@@ -55,12 +57,68 @@ export class AIController {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
-      const nodeStream = Readable.fromWeb(stream as any);
-      nodeStream.pipe(res);
+      this.pipeStream(res, req, stream, 'notes/stream');
     } catch (error) {
-      this.logger.error('Stream note error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      this.logger.error('Note stream failed to start:', this.getStack(error));
+      this.sendError(res, 'Failed to start note stream');
     }
+  }
+
+  private pipeStream(
+    res: Response,
+    req: Request,
+    stream: ReadableStream,
+    feature: string,
+  ): void {
+    const nodeStream = Readable.fromWeb(stream as any);
+
+    nodeStream.on('error', (err: Error) => {
+      this.logger.error(`${feature} stream error:`, this.getStack(err));
+      if (!res.headersSent) {
+        this.sendError(res, 'AI stream failed');
+        return;
+      }
+      try {
+        res.write(
+          `event: error\ndata: ${JSON.stringify({
+            message: err.message || 'AI stream failed',
+          })}\n\n`,
+        );
+      } catch {
+        /* connection already broken */
+      }
+      res.end();
+    });
+
+    req.on('aborted', () => {
+      this.logger.warn(`${feature} request aborted by client`);
+      nodeStream.destroy();
+    });
+
+    res.on('close', () => {
+      if (!res.writableEnded) {
+        this.logger.warn(`${feature} connection closed by client`);
+        nodeStream.destroy();
+      }
+    });
+
+    nodeStream.on('close', () => {
+      if (!res.writableEnded) res.end();
+    });
+
+    nodeStream.pipe(res);
+  }
+
+  private sendError(res: Response, message: string): void {
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
+    res.status(500).json({ error: message });
+  }
+
+  private getStack(error: unknown): string | undefined {
+    return error instanceof Error ? error.stack : String(error);
   }
 
   @Post('notes/generate')

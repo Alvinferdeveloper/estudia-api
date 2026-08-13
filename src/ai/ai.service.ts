@@ -52,7 +52,10 @@ export class AIService {
         await this.ragService.vectorizeDocument(documentId, userId);
       }
     } catch (error) {
-      this.logger.error('Auto-vectorize error:', error);
+      this.logger.error(
+        'Auto-vectorize error:',
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 
@@ -166,7 +169,10 @@ export class AIService {
           allQuestions = [...allQuestions, ...withType];
         }
       } catch (e) {
-        this.logger.error(`Failed to generate ${type} questions:`, e);
+        this.logger.error(
+          `Failed to generate ${type} questions:`,
+          e instanceof Error ? e.stack : String(e),
+        );
       }
     }
 
@@ -222,7 +228,10 @@ export class AIService {
         }));
       }
     } catch (e) {
-      this.logger.error('Failed to parse AI response:', e);
+      this.logger.error(
+        'Failed to parse AI response:',
+        e instanceof Error ? e.stack : String(e),
+      );
     }
 
     return generateFallbackQuestions(type, numQuestions);
@@ -294,7 +303,10 @@ export class AIService {
         };
       }
     } catch (e) {
-      this.logger.error('Failed to parse evaluation:', e);
+      this.logger.error(
+        'Failed to parse evaluation:',
+        e instanceof Error ? e.stack : String(e),
+      );
     }
 
     return {
