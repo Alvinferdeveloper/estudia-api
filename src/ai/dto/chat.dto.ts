@@ -41,4 +41,8 @@ export class ChatDto {
   @IsOptional()
   @IsString()
   documentName?: string;
+
+  @IsOptional()
+  @IsString()
+  conversationId?: string;
 }
