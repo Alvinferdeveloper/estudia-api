@@ -13,6 +13,7 @@ import { Topic } from './Topic.entity';
 import { Folder } from './Folder.entity';
 import { Message } from './Message.entity';
 import { Annotation } from './Annotation.entity';
+import { Conversation } from './Conversation.entity';
 
 @Entity('document')
 export class Document {
@@ -74,6 +75,9 @@ export class Document {
 
   @OneToMany(() => Message, (message) => message.document)
   messages: Message[];
+
+  @OneToMany(() => Conversation, (conversation) => conversation.document)
+  conversations: Conversation[];
 
   @OneToMany(() => Annotation, (annotation) => annotation.document)
   annotations: Annotation[];

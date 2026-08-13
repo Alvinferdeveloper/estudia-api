@@ -2,10 +2,13 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Param,
   UseGuards,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { AuthGuard } from '../common/guards/auth.guard';
@@ -21,16 +24,83 @@ export class MessagesController {
   ) {}
 
   @Get()
-  async getMessages(
+  async getMessagesByDocument(
     @Param('documentId') documentId: string,
     @CurrentUserId() userId: string,
   ) {
-    return this.messagesService.getMessages(documentId, userId);
+    return this.messagesService.getMessagesByDocument(documentId, userId);
   }
 
   @Post()
+  async createMessageByDocument(
+    @Param('documentId') documentId: string,
+    @CurrentUserId() userId: string,
+    @Body() createMessageDto: { role: 'user' | 'assistant'; content: string },
+  ) {
+    if (createMessageDto.role === 'assistant') {
+      const canUse = await this.subscriptionsService.canUseChat(userId);
+      if (!canUse) {
+        throw new ForbiddenException(
+          'You have reached your chat message limit. Upgrade your plan to continue.',
+        );
+      }
+      await this.subscriptionsService.incrementChatUsage(userId);
+    }
+
+    return this.messagesService.createMessageByDocument(
+      documentId,
+      userId,
+      createMessageDto,
+    );
+  }
+}
+
+@Controller('documents/:documentId/conversations')
+@UseGuards(AuthGuard)
+export class ConversationsController {
+  constructor(
+    private readonly messagesService: MessagesService,
+    private readonly subscriptionsService: SubscriptionsService,
+  ) {}
+
+  @Get()
+  async getConversations(
+    @Param('documentId') documentId: string,
+    @CurrentUserId() userId: string,
+  ) {
+    return this.messagesService.getConversations(documentId, userId);
+  }
+
+  @Post()
+  async createConversation(
+    @Param('documentId') documentId: string,
+    @CurrentUserId() userId: string,
+    @Body() body: { title?: string },
+  ) {
+    return this.messagesService.createConversation(
+      documentId,
+      userId,
+      body?.title,
+    );
+  }
+
+  @Get(':conversationId/messages')
+  async getMessages(
+    @Param('documentId') documentId: string,
+    @Param('conversationId') conversationId: string,
+    @CurrentUserId() userId: string,
+  ) {
+    return this.messagesService.getMessages(
+      documentId,
+      conversationId,
+      userId,
+    );
+  }
+
+  @Post(':conversationId/messages')
   async createMessage(
     @Param('documentId') documentId: string,
+    @Param('conversationId') conversationId: string,
     @CurrentUserId() userId: string,
     @Body() createMessageDto: { role: 'user' | 'assistant'; content: string },
   ) {
@@ -46,8 +116,34 @@ export class MessagesController {
 
     return this.messagesService.createMessage(
       documentId,
+      conversationId,
       userId,
       createMessageDto,
     );
+  }
+
+  @Patch(':conversationId')
+  async renameConversation(
+    @Param('conversationId') conversationId: string,
+    @CurrentUserId() userId: string,
+    @Body() body: { title: string },
+  ) {
+    if (!body?.title?.trim()) {
+      throw new NotFoundException('Title is required');
+    }
+    return this.messagesService.renameConversation(
+      conversationId,
+      userId,
+      body.title,
+    );
+  }
+
+  @Delete(':conversationId')
+  async deleteConversation(
+    @Param('conversationId') conversationId: string,
+    @CurrentUserId() userId: string,
+  ) {
+    await this.messagesService.deleteConversation(conversationId, userId);
+    return { success: true };
   }
 }

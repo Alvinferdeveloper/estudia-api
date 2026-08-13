@@ -29,6 +29,7 @@ import { AIModule } from './ai/ai.module';
 import { Exam } from './typeorm/entities/Exam.entity';
 import { ExamQuestion } from './typeorm/entities/ExamQuestion.entity';
 import { ExamResult } from './typeorm/entities/ExamResult.entity';
+import { Conversation } from './typeorm/entities/Conversation.entity';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ExamResult } from './typeorm/entities/ExamResult.entity';
         Exam,
         ExamQuestion,
         ExamResult,
+        Conversation,
       ],
       synchronize: true,
       timezone: 'Z',
