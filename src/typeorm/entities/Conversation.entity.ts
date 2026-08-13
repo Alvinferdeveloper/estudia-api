@@ -22,7 +22,7 @@ export class Conversation {
   @Column('text', { name: 'userId', nullable: false })
   userId: string;
 
-  @Column('text', { name: 'title', default: 'Nueva conversación' })
+  @Column('varchar', { name: 'title', length: 255, default: 'Nueva conversación' })
   title: string;
 
   @CreateDateColumn({ name: 'createdAt', type: 'timestamp' })
