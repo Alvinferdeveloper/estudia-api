@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -85,5 +86,15 @@ export class FoldersController {
   @Delete(':id')
   async removeFolder(@Param('id') id: string, @CurrentUserId() userId: string) {
     return this.foldersService.removeFolder(id, userId);
+  }
+
+  @Patch(':id/star')
+  async toggleFolderStar(
+    @Param('id') id: string,
+    @Body('isStarred') isStarred: boolean,
+    @CurrentUserId() userId: string,
+  ) {
+    await this.foldersService.toggleFolderStar(id, userId, isStarred);
+    return { success: true };
   }
 }

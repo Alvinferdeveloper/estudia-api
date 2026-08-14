@@ -76,6 +76,12 @@ export class Document {
   @Column('timestamp', { name: 'lastAccessedAt', nullable: true })
   lastAccessedAt: Date | null;
 
+  @Column('boolean', { name: 'isStarred', default: false })
+  isStarred: boolean;
+
+  @Column('int', { name: 'pageCount', nullable: true })
+  pageCount: number | null;
+
   @OneToMany(() => Message, (message) => message.document)
   messages: Message[];
 

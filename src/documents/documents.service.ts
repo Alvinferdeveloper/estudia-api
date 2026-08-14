@@ -5,8 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, IsNull } from 'typeorm';
+import { PDFParse } from 'pdf-parse';
 import { Document } from '../typeorm/entities/Document.entity';
 import { Folder } from '../typeorm/entities/Folder.entity';
+import { touchFolder } from '../folders/folder-aggregates.util';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 
@@ -15,9 +17,12 @@ export interface FolderItem {
   name: string;
   color: string;
   createdAt: Date;
+  updatedAt: Date;
   type: 'folder';
   count: number;
   subfoldersCount: number;
+  totalSize: number;
+  isStarred: boolean;
 }
 
 export interface DocumentItem {
@@ -27,9 +32,13 @@ export interface DocumentItem {
   mimeType: string;
   fileSize: number;
   createdAt: Date;
+  updatedAt: Date;
+  lastAccessedAt: Date | null;
   topicId: string | null;
   folderId: string | null;
   tags: string[];
+  isStarred: boolean;
+  pageCount: number | null;
   type: 'document';
 }
 
@@ -79,6 +88,7 @@ export class DocumentsService {
       }
 
       const tagsArray = tags ? tags.split(',').map((t) => t.trim()) : [];
+      const pageCount = await this.extractPageCount(file.buffer);
 
       const newDocument = this.documentsRepository.create({
         fileName: file.originalname,
@@ -89,12 +99,33 @@ export class DocumentsService {
         topicId: topicId,
         folderId: folderId,
         tags: tagsArray,
+        pageCount,
       });
 
-      return this.documentsRepository.save(newDocument);
+      const saved = await this.documentsRepository.save(newDocument);
+
+      if (folderId) {
+        await touchFolder(this.foldersRepository, folderId, {
+          documentDelta: 1,
+          sizeDelta: file.size,
+        });
+      }
+
+      return saved;
     } catch (error) {
       console.error('Error uploading document:', error);
       throw new InternalServerErrorException('Failed to upload document');
+    }
+  }
+
+  private async extractPageCount(buffer: Buffer): Promise<number | null> {
+    try {
+      const parser = new PDFParse({ data: buffer });
+      const info = await parser.getInfo();
+      return info.total;
+    } catch (error) {
+      console.error('Error extracting PDF page count:', error);
+      return null;
     }
   }
 
@@ -170,9 +201,12 @@ export class DocumentsService {
       name: folder.name,
       color: folder.color,
       createdAt: folder.createdAt,
+      updatedAt: folder.updatedAt,
       type: 'folder' as const,
-      count: 0,
-      subfoldersCount: 0,
+      count: folder.count,
+      subfoldersCount: folder.subfoldersCount,
+      totalSize: folder.totalSize,
+      isStarred: folder.isStarred,
     }));
 
     // Get documents at current level
@@ -203,9 +237,13 @@ export class DocumentsService {
       mimeType: doc.mimeType,
       fileSize: doc.fileSize,
       createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+      lastAccessedAt: doc.lastAccessedAt,
       topicId: doc.topicId,
       folderId: doc.folderId,
       tags: doc.tags,
+      isStarred: doc.isStarred,
+      pageCount: doc.pageCount,
       type: 'document' as const,
     }));
 
@@ -297,9 +335,30 @@ export class DocumentsService {
       }
 
       await this.documentsRepository.delete(id);
+
+      if (document.folderId) {
+        await touchFolder(this.foldersRepository, document.folderId, {
+          documentDelta: -1,
+          sizeDelta: -document.fileSize,
+        });
+      }
     } catch (error) {
       console.error('Error deleting document:', error);
       throw new InternalServerErrorException('Failed to delete document');
+    }
+  }
+
+  async toggleDocumentStar(
+    id: string,
+    userId: string,
+    isStarred: boolean,
+  ): Promise<void> {
+    const result = await this.documentsRepository.update(
+      { id, userId },
+      { isStarred },
+    );
+    if (result.affected === 0) {
+      throw new NotFoundException('Document not found');
     }
   }
 }

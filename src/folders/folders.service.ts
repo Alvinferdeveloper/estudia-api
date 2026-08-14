@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Folder } from '../typeorm/entities/Folder.entity';
+import { touchFolder } from './folder-aggregates.util';
 
 @Injectable()
 export class FoldersService {
@@ -24,7 +25,15 @@ export class FoldersService {
       userId,
       parentId,
     });
-    return this.foldersRepository.save(newFolder);
+    const saved = await this.foldersRepository.save(newFolder);
+
+    if (parentId) {
+      await touchFolder(this.foldersRepository, parentId, {
+        subfolderDelta: 1,
+      });
+    }
+
+    return saved;
   }
 
   async findAllFolders(userId: string, topicId?: string): Promise<Folder[]> {
@@ -103,7 +112,32 @@ export class FoldersService {
   }
 
   async removeFolder(id: string, userId: string): Promise<void> {
-    const result = await this.foldersRepository.delete({ id, userId });
+    const folder = await this.foldersRepository.findOne({
+      where: { id, userId },
+    });
+    if (!folder) {
+      throw new NotFoundException('Folder not found');
+    }
+
+    await this.foldersRepository.delete({ id, userId });
+
+    if (folder.parentId) {
+      await touchFolder(this.foldersRepository, folder.parentId, {
+        subfolderDelta: -1,
+        sizeDelta: -folder.totalSize,
+      });
+    }
+  }
+
+  async toggleFolderStar(
+    id: string,
+    userId: string,
+    isStarred: boolean,
+  ): Promise<void> {
+    const result = await this.foldersRepository.update(
+      { id, userId },
+      { isStarred },
+    );
     if (result.affected === 0) {
       throw new NotFoundException('Folder not found');
     }

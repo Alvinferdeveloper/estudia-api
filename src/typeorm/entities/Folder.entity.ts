@@ -62,6 +62,15 @@ export class Folder {
   @OneToMany(() => Document, (document) => document.folder)
   documents: Document[];
 
-  count?: number;
-  subfoldersCount?: number;
+  @Column('int', { name: 'count', default: 0 })
+  count: number;
+
+  @Column('int', { name: 'subfoldersCount', default: 0 })
+  subfoldersCount: number;
+
+  @Column('bigint', { name: 'totalSize', default: 0 })
+  totalSize: number;
+
+  @Column('boolean', { name: 'isStarred', default: false })
+  isStarred: boolean;
 }

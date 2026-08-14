@@ -108,6 +108,16 @@ export class DocumentsController {
     return { success: true };
   }
 
+  @Patch(':id/star')
+  async toggleDocumentStar(
+    @Param('id') id: string,
+    @Body('isStarred') isStarred: boolean,
+    @CurrentUserId() userId: string,
+  ) {
+    await this.documentsService.toggleDocumentStar(id, userId, isStarred);
+    return { success: true };
+  }
+
   @Get(':id')
   async findOneDocument(
     @Param('id') id: string,
