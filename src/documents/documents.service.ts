@@ -179,6 +179,7 @@ export class DocumentsService {
     page: number = 1,
     limit: number = 10,
     search?: string,
+    sortBy: 'date' | 'name' = 'date',
   ): Promise<{ data: Item[]; total: number; page: number; limit: number }> {
     // Get folders at current level
     const folderQuery = this.foldersRepository
@@ -247,10 +248,17 @@ export class DocumentsService {
       type: 'document' as const,
     }));
 
-    // Combine and sort by createdAt
+    // Combine folders and documents into a single ordered list — no
+    // "folders first" grouping, they interleave by the chosen criterion
+    // just like Drive/OneDrive.
+    const getName = (item: Item) =>
+      item.type === 'folder' ? item.name : item.fileName;
+
     const allItems: Item[] = [...folderItems, ...documentItems].sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        sortBy === 'name'
+          ? getName(a).localeCompare(getName(b))
+          : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     const total = totalFolders + totalDocs;

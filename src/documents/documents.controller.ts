@@ -75,6 +75,7 @@ export class DocumentsController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: 'date' | 'name',
   ) {
     return this.documentsService.findAllItems(
       userId,
@@ -83,6 +84,7 @@ export class DocumentsController {
       Number(page) || 1,
       Number(limit) || 10,
       search,
+      sortBy === 'name' ? 'name' : 'date',
     );
   }
 
