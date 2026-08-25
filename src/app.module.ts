@@ -30,6 +30,7 @@ import { Exam } from './typeorm/entities/Exam.entity';
 import { ExamQuestion } from './typeorm/entities/ExamQuestion.entity';
 import { ExamResult } from './typeorm/entities/ExamResult.entity';
 import { Conversation } from './typeorm/entities/Conversation.entity';
+import { DocumentImage } from './typeorm/entities/DocumentImage.entity';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { Conversation } from './typeorm/entities/Conversation.entity';
         ExamQuestion,
         ExamResult,
         Conversation,
+        DocumentImage,
       ],
       synchronize: true,
       timezone: 'Z',

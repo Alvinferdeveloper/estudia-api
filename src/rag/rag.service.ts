@@ -108,14 +108,18 @@ export class RagService {
       throw new Error('Document not found');
     }
 
-    const { data } = await this.supabase.storage
-      .from('documents')
-      .createSignedUrl(document.filePath, 60 * 60 * 24);
-    if (!data) {
-      throw new Error('Failed to get document');
-    }
+    let text = document.markdownContent;
 
-    const text = await this.extractTextFromPDF(data.signedUrl);
+    if (!text) {
+      const { data } = await this.supabase.storage
+        .from('documents')
+        .createSignedUrl(document.filePath, 60 * 60 * 24);
+      if (!data) {
+        throw new Error('Failed to get document');
+      }
+
+      text = await this.extractTextFromPDF(data.signedUrl);
+    }
 
     if (!text || text.trim().length < 50) {
       throw new Error('No readable text found in PDF');

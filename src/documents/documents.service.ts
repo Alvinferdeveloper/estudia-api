@@ -8,7 +8,9 @@ import { Repository, Like, IsNull } from 'typeorm';
 import { PDFParse } from 'pdf-parse';
 import { Document } from '../typeorm/entities/Document.entity';
 import { Folder } from '../typeorm/entities/Folder.entity';
+import { DocumentImage } from '../typeorm/entities/DocumentImage.entity';
 import { touchFolder } from '../folders/folder-aggregates.util';
+import { DocumentIngestionService } from './document-ingestion.service';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 
@@ -53,6 +55,9 @@ export class DocumentsService {
     private documentsRepository: Repository<Document>,
     @InjectRepository(Folder)
     private foldersRepository: Repository<Folder>,
+    @InjectRepository(DocumentImage)
+    private documentImagesRepository: Repository<DocumentImage>,
+    private documentIngestionService: DocumentIngestionService,
   ) {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -110,6 +115,12 @@ export class DocumentsService {
           sizeDelta: file.size,
         });
       }
+
+      this.documentIngestionService.ingestInBackground(
+        saved.id,
+        file.buffer,
+        file.originalname,
+      );
 
       return saved;
     } catch (error) {
@@ -368,5 +379,17 @@ export class DocumentsService {
     if (result.affected === 0) {
       throw new NotFoundException('Document not found');
     }
+  }
+
+  async getDocumentImages(
+    id: string,
+    userId: string,
+  ): Promise<DocumentImage[]> {
+    await this.findOneDocument(id, userId);
+
+    return this.documentImagesRepository.find({
+      where: { documentId: id },
+      order: { pageNumber: 'ASC' },
+    });
   }
 }

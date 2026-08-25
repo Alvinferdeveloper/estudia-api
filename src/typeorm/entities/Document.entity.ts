@@ -82,6 +82,9 @@ export class Document {
   @Column('int', { name: 'pageCount', nullable: true })
   pageCount: number | null;
 
+  @Column('longtext', { name: 'markdownContent', nullable: true })
+  markdownContent: string | null;
+
   @OneToMany(() => Message, (message) => message.document)
   messages: Message[];
 

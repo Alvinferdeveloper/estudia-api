@@ -120,6 +120,14 @@ export class DocumentsController {
     return { success: true };
   }
 
+  @Get(':id/images')
+  async getDocumentImages(
+    @Param('id') id: string,
+    @CurrentUserId() userId: string,
+  ) {
+    return this.documentsService.getDocumentImages(id, userId);
+  }
+
   @Get(':id')
   async findOneDocument(
     @Param('id') id: string,
