@@ -45,8 +45,7 @@ export class GoogleVisualQueryProvider implements VisualQueryProvider {
         error instanceof Error ? error.stack : String(error),
       );
       throw new AIProviderException(
-        `Visual query provider failed: ${
-          error instanceof Error ? error.message : 'unknown error'
+        `Visual query provider failed: ${error instanceof Error ? error.message : 'unknown error'
         }`,
         error,
       );

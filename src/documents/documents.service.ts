@@ -265,11 +265,10 @@ export class DocumentsService {
     const getName = (item: Item) =>
       item.type === 'folder' ? item.name : item.fileName;
 
-    const allItems: Item[] = [...folderItems, ...documentItems].sort(
-      (a, b) =>
-        sortBy === 'name'
-          ? getName(a).localeCompare(getName(b))
-          : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    const allItems: Item[] = [...folderItems, ...documentItems].sort((a, b) =>
+      sortBy === 'name'
+        ? getName(a).localeCompare(getName(b))
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     const total = totalFolders + totalDocs;
@@ -319,10 +318,7 @@ export class DocumentsService {
     }
 
     return queryBuilder
-      .orderBy(
-        'COALESCE(document.lastAccessedAt, document.createdAt)',
-        'DESC',
-      )
+      .orderBy('COALESCE(document.lastAccessedAt, document.createdAt)', 'DESC')
       .take(limit)
       .getMany();
   }

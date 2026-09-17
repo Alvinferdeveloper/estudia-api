@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from '../typeorm/entities/Message.entity';
@@ -50,7 +54,10 @@ export class MessagesService {
     userId: string,
     title: string,
   ): Promise<Conversation> {
-    const conversation = await this.findOwnedConversation(conversationId, userId);
+    const conversation = await this.findOwnedConversation(
+      conversationId,
+      userId,
+    );
     conversation.title = title.trim() || DEFAULT_TITLE;
     return this.conversationsRepository.save(conversation);
   }
@@ -59,7 +66,10 @@ export class MessagesService {
     conversationId: string,
     userId: string,
   ): Promise<void> {
-    const conversation = await this.findOwnedConversation(conversationId, userId);
+    const conversation = await this.findOwnedConversation(
+      conversationId,
+      userId,
+    );
     await this.conversationsRepository.remove(conversation);
   }
 
@@ -173,7 +183,9 @@ export class MessagesService {
       userId,
     );
     if (conversation.documentId !== documentId) {
-      throw new UnauthorizedException('Conversation does not belong to document');
+      throw new UnauthorizedException(
+        'Conversation does not belong to document',
+      );
     }
     return conversation;
   }

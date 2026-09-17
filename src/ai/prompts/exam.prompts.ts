@@ -16,7 +16,6 @@ const DIFFICULTY_INSTRUCTIONS: Record<string, string> = {
   hard: 'Generate complex questions that require synthesis, evaluation, and deep understanding.',
 };
 
-
 const TYPE_PROMPTS: Record<Exclude<QuestionType, 'mixed'>, string> = {
   open: 'Generate open-ended questions where the student must provide a detailed written answer.',
   multiple_choice:

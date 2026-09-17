@@ -90,11 +90,7 @@ export class ConversationsController {
     @Param('conversationId') conversationId: string,
     @CurrentUserId() userId: string,
   ) {
-    return this.messagesService.getMessages(
-      documentId,
-      conversationId,
-      userId,
-    );
+    return this.messagesService.getMessages(documentId, conversationId, userId);
   }
 
   @Post(':conversationId/messages')

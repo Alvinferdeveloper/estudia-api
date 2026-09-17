@@ -85,7 +85,10 @@ export class CreateConversation1757000000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.dropForeignKey('message', 'FK_message_conversation');
-    await queryRunner.dropForeignKey('conversation', 'FK_conversation_document');
+    await queryRunner.dropForeignKey(
+      'conversation',
+      'FK_conversation_document',
+    );
     await queryRunner.dropColumn('message', 'conversationId');
     await queryRunner.dropTable('conversation');
   }
