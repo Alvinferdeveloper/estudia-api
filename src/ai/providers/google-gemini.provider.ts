@@ -22,6 +22,7 @@ const MODELS: Record<AIFeature, string> = {
   exam: 'gemini-2.5-flash',
   noteGeneration: 'gemini-3-flash-preview',
   noteStream: 'gemini-2.5-flash-lite',
+  vocabulary: 'gemini-2.5-flash',
 };
 
 export class GoogleGeminiProvider implements AIProvider {

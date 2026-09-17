@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards, Res, Req, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Res,
+  Req,
+  Logger,
+} from '@nestjs/common';
 import { Readable } from 'stream';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '../common/guards/auth.guard';
@@ -7,6 +15,7 @@ import { AIService } from './ai.service';
 import { ChatDto } from './dto/chat.dto';
 import { GenerateQuestionsDto, EvaluateAnswerDto } from './dto/exam.dto';
 import { NoteDto } from './dto/note.dto';
+import { VocabularyDto } from './dto/vocabulary.dto';
 
 @Controller('ai')
 @UseGuards(AuthGuard)
@@ -125,6 +134,15 @@ export class AIController {
   async generateNote(@CurrentUserId() userId: string, @Body() dto: NoteDto) {
     const content = await this.aiService.generateNote(dto);
     return { content };
+  }
+
+  @Post('vocabulary/explain')
+  async explainVocabulary(
+    @CurrentUserId() userId: string,
+    @Body() dto: VocabularyDto,
+  ) {
+    const explanation = await this.aiService.explainVocabulary(dto);
+    return { explanation };
   }
 
   @Post('exam/generate')

@@ -14,6 +14,7 @@ import { Folder } from './Folder.entity';
 import { Message } from './Message.entity';
 import { Annotation } from './Annotation.entity';
 import { Conversation } from './Conversation.entity';
+import { VocabularyEntry } from './VocabularyEntry.entity';
 
 @Entity('document')
 export class Document {
@@ -93,4 +94,10 @@ export class Document {
 
   @OneToMany(() => Annotation, (annotation) => annotation.document)
   annotations: Annotation[];
+
+  @OneToMany(
+    () => VocabularyEntry,
+    (vocabularyEntry) => vocabularyEntry.document,
+  )
+  vocabularyEntries: VocabularyEntry[];
 }

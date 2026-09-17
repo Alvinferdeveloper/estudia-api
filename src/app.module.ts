@@ -31,6 +31,8 @@ import { ExamQuestion } from './typeorm/entities/ExamQuestion.entity';
 import { ExamResult } from './typeorm/entities/ExamResult.entity';
 import { Conversation } from './typeorm/entities/Conversation.entity';
 import { DocumentImage } from './typeorm/entities/DocumentImage.entity';
+import { VocabularyModule } from './vocabulary/vocabulary.module';
+import { VocabularyEntry } from './typeorm/entities/VocabularyEntry.entity';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { DocumentImage } from './typeorm/entities/DocumentImage.entity';
     PaymentsModule,
     ExamModule,
     AIModule,
+    VocabularyModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
@@ -70,6 +73,7 @@ import { DocumentImage } from './typeorm/entities/DocumentImage.entity';
         ExamResult,
         Conversation,
         DocumentImage,
+        VocabularyEntry,
       ],
       synchronize: true,
       timezone: 'Z',

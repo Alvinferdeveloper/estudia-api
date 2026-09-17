@@ -16,6 +16,11 @@ import {
   NOTE_SYSTEM_PROMPT,
   buildNoteUserPrompt,
 } from './prompts/note.prompts';
+import {
+  VOCABULARY_SYSTEM_PROMPT,
+  buildVocabularyUserPrompt,
+} from './prompts/vocabulary.prompts';
+import { VocabularyExplanation } from '../typeorm/entities/VocabularyEntry.entity';
 
 @Injectable()
 export class AIService {
@@ -258,8 +263,12 @@ export class AIService {
       let isCorrect = normalizedUser === normalizedIdeal;
 
       if (questionType === 'true_false') {
-        const userIsTrue = ['true', 'verdadero', 'v', '1'].includes(normalizedUser);
-        const idealIsTrue = ['true', 'verdadero', 'v', '1'].includes(normalizedIdeal);
+        const userIsTrue = ['true', 'verdadero', 'v', '1'].includes(
+          normalizedUser,
+        );
+        const idealIsTrue = ['true', 'verdadero', 'v', '1'].includes(
+          normalizedIdeal,
+        );
         isCorrect = userIsTrue === idealIsTrue;
       } else if (questionType === 'multiple_choice') {
         // Just in case they provide "A) Option" instead of just "A"
@@ -349,5 +358,50 @@ export class AIService {
       systemPrompt: NOTE_SYSTEM_PROMPT,
       messages: modelMessages,
     });
+  }
+
+  // ─── Vocabulary (Language Mode) ────────────────────────────────────
+
+  async explainVocabulary(data: {
+    selectedText: string;
+    wordLanguage: string;
+    explanationLanguage: string;
+    documentContext?: string;
+  }): Promise<VocabularyExplanation> {
+    const userPrompt = buildVocabularyUserPrompt(data);
+
+    const text = await this.provider.generateText({
+      feature: 'vocabulary',
+      systemPrompt: VOCABULARY_SYSTEM_PROMPT,
+      userPrompt,
+    });
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed.meanings) && parsed.meanings.length > 0) {
+          return parsed as VocabularyExplanation;
+        }
+      } catch (e) {
+        this.logger.error(
+          'Failed to parse vocabulary explanation:',
+          e instanceof Error ? e.stack : String(e),
+        );
+      }
+    }
+
+    return {
+      word: data.selectedText,
+      wordLanguage: data.wordLanguage,
+      explanationLanguage: data.explanationLanguage,
+      meanings: [
+        {
+          definition:
+            text.trim().slice(0, 800) || 'No se pudo generar una explicación.',
+          exampleSentence: '',
+        },
+      ],
+    };
   }
 }
