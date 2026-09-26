@@ -33,6 +33,7 @@ import { Conversation } from './typeorm/entities/Conversation.entity';
 import { DocumentImage } from './typeorm/entities/DocumentImage.entity';
 import { VocabularyModule } from './vocabulary/vocabulary.module';
 import { VocabularyEntry } from './typeorm/entities/VocabularyEntry.entity';
+import { TranslateModule } from './translate/translate.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { VocabularyEntry } from './typeorm/entities/VocabularyEntry.entity';
     ExamModule,
     AIModule,
     VocabularyModule,
+    TranslateModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
