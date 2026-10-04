@@ -13,6 +13,11 @@ export class VocabularyDto {
   @IsNotEmpty()
   explanationLanguage: string;
 
+  // Language the selected text is actually written in, when it differs from wordLanguage.
+  @IsOptional()
+  @IsString()
+  sourceLanguage?: string;
+
   @IsOptional()
   @IsString()
   documentContext?: string;

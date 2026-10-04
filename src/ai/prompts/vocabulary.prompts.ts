@@ -15,7 +15,8 @@ Tu tarea es explicar una palabra o frase a un estudiante para que la aprenda de 
 Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown y sin bloques de código (nada de \`\`\`). El JSON debe tener EXACTAMENTE esta forma:
 
 {
-  "word": "la palabra o frase, tal cual fue seleccionada",
+  "word": "la palabra o frase que se explica (la seleccionada, o su equivalente si se indica)",
+  "sourceText": "solo en modo equivalente: el texto original seleccionado; en otro caso omítelo",
   "wordLanguage": "código del idioma de la palabra",
   "explanationLanguage": "código del idioma de la explicación",
   "phonetic": "pronunciación aproximada (opcional, string o null)",
@@ -44,18 +45,42 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdo
 - Si no tienes un dato útil para "tip", usa null.
 - No agregues explicaciones fuera del JSON. No repitas el schema. Responde solo con el objeto JSON.`;
 
+// The reader studies a word from a text in their own language: teach its equivalent in the target language.
+export function isEquivalentMode({
+  wordLanguage,
+  sourceLanguage,
+}: {
+  wordLanguage: string;
+  sourceLanguage?: string;
+}): boolean {
+  return !!sourceLanguage && sourceLanguage !== wordLanguage;
+}
+
 export function buildVocabularyUserPrompt({
   selectedText,
   wordLanguage,
   explanationLanguage,
+  sourceLanguage,
   documentContext,
 }: {
   selectedText: string;
   wordLanguage: string;
   explanationLanguage: string;
+  sourceLanguage?: string;
   documentContext?: string;
 }): string {
-  let userContent = `Palabra o frase seleccionada: "${selectedText}"
+  const equivalentFrom = isEquivalentMode({ wordLanguage, sourceLanguage })
+    ? sourceLanguage
+    : undefined;
+
+  let userContent = equivalentFrom
+    ? `Texto seleccionado: "${selectedText}" (está en ${languageName(equivalentFrom)}, código: ${equivalentFrom})
+MODO EQUIVALENTE: el estudiante quiere aprender cómo se dice esto en ${languageName(wordLanguage)}.
+1. Elige el equivalente más natural en ${languageName(wordLanguage)} (código: ${wordLanguage}) según el contexto; si hay varios igual de comunes, elige el principal y menciona los otros en "synonyms" o "confusables".
+2. Explica ESE equivalente siguiendo el formato: "word" es el equivalente y "sourceText" es "${selectedText}".
+3. "wordLanguage" es ${wordLanguage}; los ejemplos van en ${languageName(wordLanguage)}.
+Idioma en el que debes explicar: ${languageName(explanationLanguage)} (código: ${explanationLanguage})`
+    : `Palabra o frase seleccionada: "${selectedText}"
 Idioma de la palabra: ${languageName(wordLanguage)} (código: ${wordLanguage})
 Idioma en el que debes explicar: ${languageName(explanationLanguage)} (código: ${explanationLanguage})`;
 

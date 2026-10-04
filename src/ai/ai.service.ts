@@ -19,6 +19,7 @@ import {
 import {
   VOCABULARY_SYSTEM_PROMPT,
   buildVocabularyUserPrompt,
+  isEquivalentMode,
 } from './prompts/vocabulary.prompts';
 import { VocabularyExplanation } from '../typeorm/entities/VocabularyEntry.entity';
 
@@ -366,6 +367,7 @@ export class AIService {
     selectedText: string;
     wordLanguage: string;
     explanationLanguage: string;
+    sourceLanguage?: string;
     documentContext?: string;
   }): Promise<VocabularyExplanation> {
     const userPrompt = buildVocabularyUserPrompt(data);
@@ -381,7 +383,11 @@ export class AIService {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         if (Array.isArray(parsed.meanings) && parsed.meanings.length > 0) {
-          return parsed as VocabularyExplanation;
+          const explanation = parsed as VocabularyExplanation;
+          if (isEquivalentMode(data)) {
+            explanation.sourceText ??= data.selectedText;
+          }
+          return explanation;
         }
       } catch (e) {
         this.logger.error(
