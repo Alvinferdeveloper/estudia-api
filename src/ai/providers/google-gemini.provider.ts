@@ -2,6 +2,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import {
   generateText,
   streamText,
+  smoothStream,
   toUIMessageStream,
   createUIMessageStreamResponse,
   toTextStream,
@@ -75,6 +76,8 @@ export class GoogleGeminiProvider implements AIProvider {
         model: this.client(MODELS[feature]),
         system: systemPrompt,
         messages,
+        // Gemini emits large, uneven chunks; re-pace them word by word so the text reads as it's written.
+        experimental_transform: smoothStream({ delayInMs: 15, chunking: 'word' }),
       });
 
       const response =
