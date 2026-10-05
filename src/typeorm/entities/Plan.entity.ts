@@ -19,17 +19,8 @@ export class Plan {
   })
   plan: SubscriptionPlan;
 
-  @Column('varchar', { length: 50 })
-  name: string;
-
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
-
-  @Column('text')
-  description: string;
-
-  @Column('json', { nullable: true })
-  features: string[];
 
   @Column('boolean', { default: false })
   isPopular: boolean;
