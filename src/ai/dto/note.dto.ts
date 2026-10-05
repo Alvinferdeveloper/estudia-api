@@ -1,4 +1,5 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsResponseLanguage } from '../language';
 
 export class NoteDto {
   @IsString()
@@ -16,4 +17,7 @@ export class NoteDto {
   @IsOptional()
   @IsString()
   originalNote?: string;
+
+  @IsResponseLanguage()
+  responseLanguage?: string;
 }

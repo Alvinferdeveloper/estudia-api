@@ -13,7 +13,7 @@ import {
   QuestionType,
 } from './prompts/exam.prompts';
 import {
-  NOTE_SYSTEM_PROMPT,
+  buildNoteSystemPrompt,
   buildNoteUserPrompt,
 } from './prompts/note.prompts';
 import {
@@ -70,6 +70,7 @@ export class AIService {
     userId: string,
     documentId?: string,
     documentName: string = 'documento',
+    responseLanguage?: string,
   ): Promise<ReadableStream> {
     let chunks: SearchResult[] = [];
 
@@ -82,7 +83,11 @@ export class AIService {
       }
     }
 
-    const systemPrompt = buildChatSystemPrompt(documentName, chunks);
+    const systemPrompt = buildChatSystemPrompt(
+      documentName,
+      chunks,
+      responseLanguage,
+    );
     const modelMessages = await convertToModelMessages(rawMessages);
 
     return this.provider.streamText({
@@ -100,8 +105,16 @@ export class AIService {
     difficulty: string;
     questionType?: string;
     numQuestions?: number;
+    responseLanguage?: string;
   }): Promise<any[]> {
-    const { content, pages, difficulty, questionType, numQuestions = 5 } = data;
+    const {
+      content,
+      pages,
+      difficulty,
+      questionType,
+      numQuestions = 5,
+      responseLanguage,
+    } = data;
 
     if (process.env.USE_FALLBACK_ONLY === 'true') {
       return generateFallbackQuestions(
@@ -116,6 +129,7 @@ export class AIService {
         pages,
         difficulty,
         numQuestions,
+        responseLanguage,
       );
     }
 
@@ -125,6 +139,7 @@ export class AIService {
       difficulty,
       questionType as Exclude<QuestionType, 'mixed'>,
       numQuestions,
+      responseLanguage,
     );
   }
 
@@ -133,6 +148,7 @@ export class AIService {
     pages: number[],
     difficulty: string,
     numQuestions: number,
+    responseLanguage?: string,
   ): Promise<any[]> {
     const types: Exclude<QuestionType, 'mixed'>[] = [
       'open',
@@ -156,6 +172,7 @@ export class AIService {
         difficulty,
         type,
         count,
+        responseLanguage,
       });
 
       try {
@@ -209,6 +226,7 @@ export class AIService {
     difficulty: string,
     type: Exclude<QuestionType, 'mixed'>,
     numQuestions: number,
+    responseLanguage?: string,
   ): Promise<any[]> {
     const prompt = buildGenerateQuestionsPrompt({
       content,
@@ -216,6 +234,7 @@ export class AIService {
       difficulty,
       type,
       count: numQuestions,
+      responseLanguage,
     });
 
     try {
@@ -248,8 +267,15 @@ export class AIService {
     idealAnswer: string;
     question: string;
     questionType?: string;
+    responseLanguage?: string;
   }): Promise<{ score: number; feedback: string }> {
-    const { userAnswer, idealAnswer, question, questionType } = data;
+    const {
+      userAnswer,
+      idealAnswer,
+      question,
+      questionType,
+      responseLanguage,
+    } = data;
 
     const isClosedType = [
       'multiple_choice',
@@ -276,12 +302,8 @@ export class AIService {
         isCorrect = normalizedUser[0] === normalizedIdeal[0];
       }
 
-      return {
-        score: isCorrect ? 10 : 0,
-        feedback: isCorrect
-          ? 'Correct!'
-          : `Incorrect. The correct answer is: ${idealAnswer}`,
-      };
+      // The UI already shows correct/incorrect and the right answer in the user's language.
+      return { score: isCorrect ? 10 : 0, feedback: '' };
     }
 
     if (process.env.USE_FALLBACK_ONLY === 'true') {
@@ -296,6 +318,7 @@ export class AIService {
       question,
       userAnswer,
       idealAnswer,
+      responseLanguage,
     });
 
     try {
@@ -309,7 +332,7 @@ export class AIService {
         const parsed = JSON.parse(jsonMatch[0]);
         return {
           score: Math.min(10, Math.max(0, parsed.score)),
-          feedback: parsed.feedback || 'Good attempt!',
+          feedback: parsed.feedback || '',
         };
       }
     } catch (e) {
@@ -319,10 +342,7 @@ export class AIService {
       );
     }
 
-    return {
-      score: 5,
-      feedback: 'Your answer has been submitted for review.',
-    };
+    return { score: 5, feedback: '' };
   }
 
   // ─── Notes ────────────────────────────────────────────────────────
@@ -332,12 +352,13 @@ export class AIService {
     prompt: string;
     documentContext?: string;
     originalNote?: string;
+    responseLanguage?: string;
   }): Promise<string> {
     const userContent = buildNoteUserPrompt(data);
 
     return this.provider.generateText({
       feature: 'noteGeneration',
-      systemPrompt: NOTE_SYSTEM_PROMPT,
+      systemPrompt: buildNoteSystemPrompt(data.responseLanguage),
       userPrompt: userContent,
     });
   }
@@ -347,6 +368,7 @@ export class AIService {
     prompt: string;
     documentContext?: string;
     originalNote?: string;
+    responseLanguage?: string;
   }): Promise<ReadableStream> {
     const userContent = buildNoteUserPrompt(data);
 
@@ -356,7 +378,7 @@ export class AIService {
 
     return this.provider.streamText({
       feature: 'noteStream',
-      systemPrompt: NOTE_SYSTEM_PROMPT,
+      systemPrompt: buildNoteSystemPrompt(data.responseLanguage),
       messages: modelMessages,
     });
   }

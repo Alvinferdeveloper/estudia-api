@@ -37,6 +37,7 @@ export class AIController {
         userId,
         dto.documentId,
         dto.documentName,
+        dto.responseLanguage,
       );
 
       res.setHeader('Content-Type', 'text/event-stream');

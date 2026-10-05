@@ -6,6 +6,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsResponseLanguage } from '../language';
 
 export class UIMessagePartDto {
   @IsString()
@@ -45,4 +46,7 @@ export class ChatDto {
   @IsOptional()
   @IsString()
   conversationId?: string;
+
+  @IsResponseLanguage()
+  responseLanguage?: string;
 }

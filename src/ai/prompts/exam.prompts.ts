@@ -1,3 +1,5 @@
+import { responseLanguageInstruction } from '../language';
+
 export type QuestionType =
   | 'open'
   | 'multiple_choice'
@@ -32,12 +34,14 @@ export function buildGenerateQuestionsPrompt({
   difficulty,
   type,
   count,
+  responseLanguage,
 }: {
   content: string;
   pages: number[];
   difficulty: string;
   type: Exclude<QuestionType, 'mixed'>;
   count: number;
+  responseLanguage?: string;
 }): string {
   const diffInst =
     DIFFICULTY_INSTRUCTIONS[difficulty] || DIFFICULTY_INSTRUCTIONS.medium;
@@ -68,6 +72,8 @@ ${enforceType}
 
 Generate exactly ${count} questions.
 
+${responseLanguageInstruction('sourceText', responseLanguage)} This applies to the question text, options and answers only: keep JSON keys and the "type" value exactly as shown, and for true/false questions "correctAnswer" must stay the English string "true" or "false".
+
 ${formatInstruction}
 
 Respond ONLY with valid JSON, no additional text.`;
@@ -77,10 +83,12 @@ export function buildEvaluateAnswerPrompt({
   question,
   userAnswer,
   idealAnswer,
+  responseLanguage,
 }: {
   question: string;
   userAnswer: string;
   idealAnswer: string;
+  responseLanguage?: string;
 }): string {
   return `You are an AI tutor evaluating a student's answer.
 
@@ -93,6 +101,8 @@ Ideal Answer: ${idealAnswer}
 Evaluate the student's answer and provide:
 1. A score from 0-10
 2. Constructive feedback
+
+${responseLanguageInstruction('question', responseLanguage)}
 
 Respond as JSON:
 {"score": 7, "feedback": "Your answer covers the main points but could be more detailed..."}`;

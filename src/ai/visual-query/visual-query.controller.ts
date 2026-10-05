@@ -22,6 +22,7 @@ export class VisualQueryController {
       imageBase64: dto.imageBase64,
       imageXref: dto.imageXref,
       pageNumber: dto.pageNumber,
+      responseLanguage: dto.responseLanguage,
     });
     return { answer };
   }

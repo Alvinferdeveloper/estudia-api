@@ -1,4 +1,6 @@
-export const NOTE_SYSTEM_PROMPT = `Eres un asistente de estudio especializado en crear notas claras y bien formateadas.
+import { responseLanguageInstruction } from '../language';
+
+const NOTE_SYSTEM_PROMPT = `Eres un asistente de estudio especializado en crear notas claras y bien formateadas.
 
 ## FORMATO (OBLIGATORIO)
 Usa markdown correctamente:
@@ -16,6 +18,11 @@ Crea notas educativas que:
 - Incluyan ejemplos cuando sea útil
 - Usen estructura jerárquica con encabezados
 `;
+
+export function buildNoteSystemPrompt(responseLanguage?: string): string {
+  return `${NOTE_SYSTEM_PROMPT}
+${responseLanguageInstruction('sourceText', responseLanguage)}`;
+}
 
 export function buildNoteUserPrompt({
   selectedText,

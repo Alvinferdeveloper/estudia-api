@@ -1,3 +1,5 @@
+import { responseLanguageInstruction } from '../language';
+
 export interface SearchResult {
   content: string;
   pageNumber: number;
@@ -12,6 +14,7 @@ export interface RagContext {
 export function buildChatSystemPrompt(
   documentName: string,
   chunks: SearchResult[],
+  responseLanguage?: string,
 ): string {
   let prompt = `Eres un asistente de estudio del documento "${documentName}". `;
 
@@ -28,7 +31,9 @@ export function buildChatSystemPrompt(
     prompt += `Responde de forma clara, concisa y útil para facilitar el estudio.`;
   }
 
-  prompt += `\n\nIMPORTANT: After your answer, generate 2-3 follow-up questions the user might ask next. Format exactly as:
+  prompt += `\n\n${responseLanguageInstruction('userMessage', responseLanguage)}`;
+
+  prompt += `\n\nIMPORTANT: After your answer, generate 2-3 follow-up questions the user might ask next, in the same language as your answer. Format exactly as:
 [SUGGESTIONS]
 1. [question 1]
 2. [question 2]

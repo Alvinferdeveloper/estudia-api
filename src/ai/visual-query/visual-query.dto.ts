@@ -5,6 +5,7 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
+import { IsResponseLanguage } from '../language';
 
 export class VisualQueryDto {
   @IsString()
@@ -23,4 +24,7 @@ export class VisualQueryDto {
   @IsOptional()
   @IsInt()
   pageNumber?: number;
+
+  @IsResponseLanguage()
+  responseLanguage?: string;
 }

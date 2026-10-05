@@ -1,4 +1,5 @@
 import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsResponseLanguage } from '../language';
 
 export class GenerateQuestionsDto {
   @IsString()
@@ -17,6 +18,9 @@ export class GenerateQuestionsDto {
   @IsOptional()
   @IsNumber()
   numQuestions?: number;
+
+  @IsResponseLanguage()
+  responseLanguage?: string;
 }
 
 export class EvaluateAnswerDto {
@@ -32,4 +36,7 @@ export class EvaluateAnswerDto {
   @IsOptional()
   @IsString()
   questionType?: string;
+
+  @IsResponseLanguage()
+  responseLanguage?: string;
 }

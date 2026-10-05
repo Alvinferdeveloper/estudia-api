@@ -1,11 +1,7 @@
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'inglés',
-  es: 'español',
-};
+import { languageName as displayLanguageName } from '../language';
 
-function languageName(code: string): string {
-  return LANGUAGE_NAMES[code] || code;
-}
+// The prompt is written in Spanish, so language names are too ("fr" → "francés").
+const languageName = (code: string) => displayLanguageName(code, 'es');
 
 export const VOCABULARY_SYSTEM_PROMPT = `Eres un profesor de idiomas experto en metodologías de adquisición de vocabulario (enfoque comunicativo, aprendizaje en contexto, y prevención de interferencias entre idiomas).
 

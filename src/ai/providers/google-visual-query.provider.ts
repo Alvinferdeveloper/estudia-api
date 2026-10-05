@@ -23,10 +23,12 @@ export class GoogleVisualQueryProvider implements VisualQueryProvider {
     imageBase64,
     mimeType,
     question,
+    instructions,
   }: VisualQueryInput): Promise<string> {
     try {
       const result = await generateText({
         model: this.client(MODEL),
+        system: instructions,
         messages: [
           {
             role: 'user',

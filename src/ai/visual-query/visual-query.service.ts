@@ -3,6 +3,7 @@ import { DocumentsService } from '../../documents/documents.service';
 import { createVisualQueryProvider } from '../providers/visual-query-provider.factory';
 import type { VisualQueryProvider } from '../providers/visual-query-provider.factory';
 import 'dotenv/config';
+import { responseLanguageInstruction } from '../language';
 
 export interface VisualQueryParams {
   documentId: string;
@@ -11,6 +12,7 @@ export interface VisualQueryParams {
   imageBase64?: string;
   imageXref?: number;
   pageNumber?: number;
+  responseLanguage?: string;
 }
 
 interface ExtractImageResponse {
@@ -29,7 +31,14 @@ export class VisualQueryService {
   }
 
   async answer(params: VisualQueryParams): Promise<string> {
-    const { documentId, userId, question, imageXref, pageNumber } = params;
+    const {
+      documentId,
+      userId,
+      question,
+      imageXref,
+      pageNumber,
+      responseLanguage,
+    } = params;
     let imageBase64 = params.imageBase64;
     let mimeType = 'image/png';
 
@@ -76,6 +85,10 @@ export class VisualQueryService {
       imageBase64,
       mimeType,
       question,
+      instructions: responseLanguageInstruction(
+        'userMessage',
+        responseLanguage,
+      ),
     });
   }
 }
