@@ -10,6 +10,7 @@ import {
   AnnotationRect,
 } from '../typeorm/entities/Annotation.entity';
 import { Document } from '../typeorm/entities/Document.entity';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Injectable()
 export class VocabularyService {
@@ -92,7 +93,9 @@ export class VocabularyService {
       where: { id: documentId, userId },
     });
     if (!document) {
-      throw new UnauthorizedException('Access to this document is denied');
+      throw new UnauthorizedException({
+        code: ErrorCode.DOCUMENT_ACCESS_DENIED,
+      });
     }
   }
 }

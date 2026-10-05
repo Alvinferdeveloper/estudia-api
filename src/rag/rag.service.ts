@@ -1,10 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document } from '../typeorm/entities/Document.entity';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PDFParse } from 'pdf-parse';
+import { ErrorCode } from '../common/errors/error-codes';
 
 export interface Chunk {
   pageNumber: number;
@@ -105,7 +110,7 @@ export class RagService {
       where: { id: documentId, userId },
     });
     if (!document) {
-      throw new Error('Document not found');
+      throw new NotFoundException({ code: ErrorCode.DOCUMENT_NOT_FOUND });
     }
 
     let text = document.markdownContent;
@@ -122,7 +127,9 @@ export class RagService {
     }
 
     if (!text || text.trim().length < 50) {
-      throw new Error('No readable text found in PDF');
+      throw new BadRequestException({
+        code: ErrorCode.DOCUMENT_NO_READABLE_TEXT,
+      });
     }
 
     await this.deleteDocumentChunks(documentId);

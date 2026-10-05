@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Folder } from '../typeorm/entities/Folder.entity';
 import { touchFolder } from './folder-aggregates.util';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Injectable()
 export class FoldersService {
@@ -104,7 +105,7 @@ export class FoldersService {
       where: { id, userId },
     });
     if (!folder) {
-      throw new NotFoundException('Folder not found');
+      throw new NotFoundException({ code: ErrorCode.FOLDER_NOT_FOUND });
     }
     folder.name = name;
     folder.color = color;
@@ -116,7 +117,7 @@ export class FoldersService {
       where: { id, userId },
     });
     if (!folder) {
-      throw new NotFoundException('Folder not found');
+      throw new NotFoundException({ code: ErrorCode.FOLDER_NOT_FOUND });
     }
 
     await this.foldersRepository.delete({ id, userId });
@@ -139,7 +140,7 @@ export class FoldersService {
       { isStarred },
     );
     if (result.affected === 0) {
-      throw new NotFoundException('Folder not found');
+      throw new NotFoundException({ code: ErrorCode.FOLDER_NOT_FOUND });
     }
   }
 }

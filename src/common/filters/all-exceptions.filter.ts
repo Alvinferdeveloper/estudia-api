@@ -7,6 +7,18 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { ErrorCode } from '../errors/error-codes';
+
+const STATUS_CODES: Partial<Record<number, ErrorCode>> = {
+  [HttpStatus.UNAUTHORIZED]: ErrorCode.UNAUTHENTICATED,
+  [HttpStatus.FORBIDDEN]: ErrorCode.FORBIDDEN,
+  [HttpStatus.NOT_FOUND]: ErrorCode.NOT_FOUND,
+  [HttpStatus.TOO_MANY_REQUESTS]: ErrorCode.TOO_MANY_REQUESTS,
+};
+
+const codeFromStatus = (status: number): ErrorCode =>
+  STATUS_CODES[status] ??
+  (status >= 500 ? ErrorCode.INTERNAL_ERROR : ErrorCode.INVALID_REQUEST);
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -22,23 +34,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const exceptionResponse =
-      exception instanceof HttpException ? exception.getResponse() : null;
-
-    const message =
-      typeof exceptionResponse === 'string'
-        ? exceptionResponse
-        : exceptionResponse && typeof exceptionResponse === 'object'
-          ? ((exceptionResponse as Record<string, unknown>).message ??
-            (exception as Error)?.message)
-          : ((exception as Error)?.message ?? 'Internal server error');
-
     const error = exception as Error;
+    const body =
+      exception instanceof HttpException ? exception.getResponse() : null;
+    const fields =
+      body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+
+    const code =
+      typeof fields.code === 'string' ? fields.code : codeFromStatus(status);
+    const params =
+      fields.params && typeof fields.params === 'object'
+        ? fields.params
+        : undefined;
+    // Without this, a coded exception would report Nest's "Not Found Exception".
+    const message =
+      typeof body === 'string'
+        ? body
+        : (fields.message ?? (body ? code : (error?.message ?? code)));
+
     const detail =
       typeof message === 'string' ? message : JSON.stringify(message);
 
     this.logger.error(
-      `${request.method} ${request.url} -> ${status} | ${detail}`,
+      `${request.method} ${request.url} -> ${status} ${code} | ${detail}`,
       error?.stack,
     );
 
@@ -49,9 +67,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
+      code,
+      params,
+      // Server-side details (provider errors, config) stay in the logs.
+      message: status >= 500 ? code : message,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message,
     });
   }
 }

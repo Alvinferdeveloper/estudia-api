@@ -15,6 +15,7 @@ import {
 import { Subscription } from '../typeorm/entities/Subscription.entity';
 import { PayPalClient } from './lib/paypal-client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ErrorCode } from '../common/errors/error-codes';
 
 export interface CreateOrderResponse {
   orderId: string;
@@ -48,7 +49,7 @@ export class PaymentsService {
     const amount = this.payPalClient.getPlanPrice(plan);
 
     if (amount <= 0) {
-      throw new BadRequestException('Invalid plan or plan is free');
+      throw new BadRequestException({ code: ErrorCode.INVALID_PLAN });
     }
 
     const existingPending = await this.paymentRepository.findOne({
@@ -105,7 +106,9 @@ export class PaymentsService {
 
     const approvalUrl = this.findLink(paypalOrder.links, 'approve');
     if (!approvalUrl) {
-      throw new InternalServerErrorException('Failed to get approval URL');
+      throw new InternalServerErrorException({
+        code: ErrorCode.PAYMENT_CREATION_FAILED,
+      });
     }
 
     this.logger.log(
@@ -124,7 +127,7 @@ export class PaymentsService {
     plan: SubscriptionPlan,
   ): Promise<CreateSubscriptionResponse> {
     if (plan === SubscriptionPlan.FREE) {
-      throw new BadRequestException('Free plan does not require subscription');
+      throw new BadRequestException({ code: ErrorCode.INVALID_PLAN });
     }
 
     try {
@@ -154,9 +157,9 @@ export class PaymentsService {
 
       const approvalUrl = this.findLink(paypalSubscription.links, 'approve');
       if (!approvalUrl) {
-        throw new InternalServerErrorException(
-          'Failed to get subscription approval URL',
-        );
+        throw new InternalServerErrorException({
+          code: ErrorCode.PAYMENT_CREATION_FAILED,
+        });
       }
 
       this.logger.log(
@@ -173,7 +176,9 @@ export class PaymentsService {
         `Failed to create subscription for user ${userId}`,
         error,
       );
-      throw new InternalServerErrorException('Failed to create subscription');
+      throw new InternalServerErrorException({
+        code: ErrorCode.PAYMENT_CREATION_FAILED,
+      });
     }
   }
 
@@ -186,17 +191,21 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException({ code: ErrorCode.PAYMENT_NOT_FOUND });
     }
 
     if (!payment.paypalSubscriptionId) {
-      throw new BadRequestException(
-        'No PayPal subscription associated with payment',
-      );
+      throw new BadRequestException({
+        code: ErrorCode.PAYMENT_INVALID_STATE,
+        message: 'No PayPal subscription associated with payment',
+      });
     }
 
     if (payment.status !== PaymentStatus.PENDING) {
-      throw new BadRequestException('Subscription is not pending');
+      throw new BadRequestException({
+        code: ErrorCode.PAYMENT_INVALID_STATE,
+        message: 'Subscription is not pending',
+      });
     }
 
     try {
@@ -217,20 +226,23 @@ export class PaymentsService {
 
         return this.paymentRepository.findOneByOrFail({ id: payment.id });
       } else if (subscriptionDetails.status === 'APPROVAL_PENDING') {
-        throw new BadRequestException(
-          'Please complete PayPal subscription approval',
-        );
+        throw new BadRequestException({
+          code: ErrorCode.PAYMENT_APPROVAL_PENDING,
+        });
       } else {
-        throw new BadRequestException(
-          `Subscription status: ${subscriptionDetails.status}`,
-        );
+        throw new BadRequestException({
+          code: ErrorCode.PAYMENT_INVALID_STATE,
+          message: `Subscription status: ${subscriptionDetails.status}`,
+        });
       }
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
       this.logger.error(`Failed to activate subscription: ${paymentId}`, error);
-      throw new InternalServerErrorException('Failed to activate subscription');
+      throw new InternalServerErrorException({
+        code: ErrorCode.SUBSCRIPTION_ACTIVATION_FAILED,
+      });
     }
   }
 
@@ -240,22 +252,28 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException({ code: ErrorCode.PAYMENT_NOT_FOUND });
     }
 
     if (payment.status !== PaymentStatus.PENDING) {
-      throw new BadRequestException('Payment is not pending');
+      throw new BadRequestException({
+        code: ErrorCode.PAYMENT_INVALID_STATE,
+        message: 'Payment is not pending',
+      });
     }
 
     if (!payment.paypalOrderId) {
-      throw new BadRequestException('No PayPal order associated with payment');
+      throw new BadRequestException({
+        code: ErrorCode.PAYMENT_INVALID_STATE,
+        message: 'No PayPal order associated with payment',
+      });
     }
 
     if (payment.expiresAt && new Date() > payment.expiresAt) {
       await this.paymentRepository.update(payment.id, {
         status: PaymentStatus.CANCELLED,
       });
-      throw new BadRequestException('Payment has expired');
+      throw new BadRequestException({ code: ErrorCode.PAYMENT_EXPIRED });
     }
 
     try {
@@ -285,7 +303,9 @@ export class PaymentsService {
           failureReason: `PayPal capture status: ${capture.status}`,
         });
 
-        throw new BadRequestException('Payment capture failed');
+        throw new BadRequestException({
+          code: ErrorCode.PAYMENT_CAPTURE_FAILED,
+        });
       }
     } catch (error) {
       await this.paymentRepository.update(payment.id, {
@@ -581,7 +601,7 @@ export class PaymentsService {
     });
 
     if (!subscription || !subscription.paypalSubscriptionId) {
-      throw new BadRequestException('No active PayPal subscription found');
+      throw new BadRequestException({ code: ErrorCode.NO_ACTIVE_SUBSCRIPTION });
     }
 
     await this.payPalClient.cancelSubscription(
@@ -614,7 +634,7 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException({ code: ErrorCode.PAYMENT_NOT_FOUND });
     }
 
     return payment;

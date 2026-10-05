@@ -5,6 +5,7 @@ import { Exam, ExamMode, QuestionType } from '../typeorm/entities/Exam.entity';
 import { ExamQuestion } from '../typeorm/entities/ExamQuestion.entity';
 import { ExamResult } from '../typeorm/entities/ExamResult.entity';
 import { Document } from '../typeorm/entities/Document.entity';
+import { ErrorCode } from '../common/errors/error-codes';
 
 interface CreateExamDto {
   documentId: string;
@@ -156,7 +157,9 @@ export class ExamService {
       where: { id: documentId, userId },
     });
     if (!document) {
-      throw new UnauthorizedException('Access to this document is denied');
+      throw new UnauthorizedException({
+        code: ErrorCode.DOCUMENT_ACCESS_DENIED,
+      });
     }
   }
 }

@@ -6,6 +6,7 @@ import {
   SubscriptionPlan,
 } from '../typeorm/entities/Subscription.entity';
 import { Plan } from '../typeorm/entities/Plan.entity';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Injectable()
 export class SubscriptionsService {
@@ -50,7 +51,7 @@ export class SubscriptionsService {
     });
 
     if (!subscription) {
-      throw new NotFoundException('Subscription not found');
+      throw new NotFoundException({ code: ErrorCode.SUBSCRIPTION_NOT_FOUND });
     }
 
     return subscription;
@@ -185,7 +186,10 @@ export class SubscriptionsService {
     });
 
     if (!planData) {
-      throw new NotFoundException(`Plan ${plan} not found`);
+      throw new NotFoundException({
+        code: ErrorCode.PLAN_NOT_FOUND,
+        message: `Plan ${plan} not found`,
+      });
     }
 
     return {

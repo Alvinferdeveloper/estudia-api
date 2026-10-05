@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentsService } from './documents.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller('documents')
 @UseGuards(AuthGuard)
@@ -32,11 +33,11 @@ export class DocumentsController {
     @Body('tags') tags?: string,
   ) {
     if (!file) {
-      throw new BadRequestException('No file uploaded');
+      throw new BadRequestException({ code: ErrorCode.NO_FILE_UPLOADED });
     }
 
     if (file.mimetype !== 'application/pdf') {
-      throw new BadRequestException('Only PDF files are allowed');
+      throw new BadRequestException({ code: ErrorCode.ONLY_PDF_ALLOWED });
     }
 
     return this.documentsService.uploadDocument(

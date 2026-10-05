@@ -8,12 +8,13 @@ import {
   Param,
   UseGuards,
   ForbiddenException,
-  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller('documents/:documentId/messages')
 @UseGuards(AuthGuard)
@@ -40,9 +41,7 @@ export class MessagesController {
     if (createMessageDto.role === 'assistant') {
       const canUse = await this.subscriptionsService.canUseChat(userId);
       if (!canUse) {
-        throw new ForbiddenException(
-          'You have reached your chat message limit. Upgrade your plan to continue.',
-        );
+        throw new ForbiddenException({ code: ErrorCode.CHAT_LIMIT_REACHED });
       }
       await this.subscriptionsService.incrementChatUsage(userId);
     }
@@ -103,9 +102,7 @@ export class ConversationsController {
     if (createMessageDto.role === 'assistant') {
       const canUse = await this.subscriptionsService.canUseChat(userId);
       if (!canUse) {
-        throw new ForbiddenException(
-          'You have reached your chat message limit. Upgrade your plan to continue.',
-        );
+        throw new ForbiddenException({ code: ErrorCode.CHAT_LIMIT_REACHED });
       }
       await this.subscriptionsService.incrementChatUsage(userId);
     }
@@ -125,7 +122,10 @@ export class ConversationsController {
     @Body() body: { title: string },
   ) {
     if (!body?.title?.trim()) {
-      throw new NotFoundException('Title is required');
+      throw new BadRequestException({
+        code: ErrorCode.INVALID_REQUEST,
+        message: 'Title is required',
+      });
     }
     return this.messagesService.renameConversation(
       conversationId,

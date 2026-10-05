@@ -13,6 +13,7 @@ import { touchFolder } from '../folders/folder-aggregates.util';
 import { DocumentIngestionService } from './document-ingestion.service';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import 'dotenv/config';
+import { ErrorCode } from '../common/errors/error-codes';
 
 export interface FolderItem {
   id: string;
@@ -87,9 +88,10 @@ export class DocumentsService {
         });
 
       if (error) {
-        throw new InternalServerErrorException(
-          `Supabase upload error: ${error.message}`,
-        );
+        throw new InternalServerErrorException({
+          code: ErrorCode.DOCUMENT_UPLOAD_FAILED,
+          message: `Supabase upload error: ${error.message}`,
+        });
       }
 
       const tagsArray = tags ? tags.split(',').map((t) => t.trim()) : [];
@@ -125,7 +127,9 @@ export class DocumentsService {
       return saved;
     } catch (error) {
       console.error('Error uploading document:', error);
-      throw new InternalServerErrorException('Failed to upload document');
+      throw new InternalServerErrorException({
+        code: ErrorCode.DOCUMENT_UPLOAD_FAILED,
+      });
     }
   }
 
@@ -291,7 +295,7 @@ export class DocumentsService {
       where: { id, userId },
     });
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException({ code: ErrorCode.DOCUMENT_NOT_FOUND });
     }
 
     const { data } = await this.supabase.storage
@@ -328,7 +332,7 @@ export class DocumentsService {
       where: { id, userId },
     });
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException({ code: ErrorCode.DOCUMENT_NOT_FOUND });
     }
     await this.documentsRepository.update(id, {
       lastAccessedAt: new Date(),
@@ -344,9 +348,10 @@ export class DocumentsService {
         .remove([document.filePath]);
 
       if (error) {
-        throw new InternalServerErrorException(
-          `Supabase delete error: ${error.message}`,
-        );
+        throw new InternalServerErrorException({
+          code: ErrorCode.DOCUMENT_DELETE_FAILED,
+          message: `Supabase delete error: ${error.message}`,
+        });
       }
 
       await this.documentsRepository.delete(id);
@@ -359,7 +364,9 @@ export class DocumentsService {
       }
     } catch (error) {
       console.error('Error deleting document:', error);
-      throw new InternalServerErrorException('Failed to delete document');
+      throw new InternalServerErrorException({
+        code: ErrorCode.DOCUMENT_DELETE_FAILED,
+      });
     }
   }
 
@@ -373,7 +380,7 @@ export class DocumentsService {
       { isStarred },
     );
     if (result.affected === 0) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException({ code: ErrorCode.DOCUMENT_NOT_FOUND });
     }
   }
 

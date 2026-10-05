@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Message } from '../typeorm/entities/Message.entity';
 import { Conversation } from '../typeorm/entities/Conversation.entity';
 import { Document } from '../typeorm/entities/Document.entity';
+import { ErrorCode } from '../common/errors/error-codes';
 
 const DEFAULT_TITLE = 'Nueva conversación';
 
@@ -168,7 +169,7 @@ export class MessagesService {
       where: { id: conversationId },
     });
     if (!conversation || conversation.userId !== userId) {
-      throw new NotFoundException('Conversation not found');
+      throw new NotFoundException({ code: ErrorCode.CONVERSATION_NOT_FOUND });
     }
     return conversation;
   }
@@ -183,9 +184,10 @@ export class MessagesService {
       userId,
     );
     if (conversation.documentId !== documentId) {
-      throw new UnauthorizedException(
-        'Conversation does not belong to document',
-      );
+      throw new UnauthorizedException({
+        code: ErrorCode.CONVERSATION_NOT_FOUND,
+        message: 'Conversation does not belong to document',
+      });
     }
     return conversation;
   }
@@ -198,7 +200,9 @@ export class MessagesService {
       where: { id: documentId, userId },
     });
     if (!document) {
-      throw new UnauthorizedException('Access to this document is denied');
+      throw new UnauthorizedException({
+        code: ErrorCode.DOCUMENT_ACCESS_DENIED,
+      });
     }
   }
 }

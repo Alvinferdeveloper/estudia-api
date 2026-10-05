@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
+import { ErrorCode } from '../errors/error-codes';
 
 export enum SubscriptionFeature {
   CHAT = 'chat',
@@ -25,14 +26,14 @@ export class SubscriptionGuard implements CanActivate {
     const userId = request.user?.id;
 
     if (!userId) {
-      throw new ForbiddenException('User not authenticated');
+      throw new ForbiddenException({ code: ErrorCode.UNAUTHENTICATED });
     }
 
     const subscription =
       await this.subscriptionsService.getOrCreateSubscription(userId);
 
     if (!subscription.isActive) {
-      throw new ForbiddenException('Subscription is not active');
+      throw new ForbiddenException({ code: ErrorCode.SUBSCRIPTION_INACTIVE });
     }
 
     request.subscription = subscription;
@@ -52,7 +53,7 @@ export class FeatureGuard implements CanActivate {
       .pop() as SubscriptionFeature;
 
     if (!userId) {
-      throw new ForbiddenException('User not authenticated');
+      throw new ForbiddenException({ code: ErrorCode.UNAUTHENTICATED });
     }
 
     const subscription =
@@ -74,19 +75,10 @@ export class FeatureGuard implements CanActivate {
 
     const check = featureChecks[feature];
     if (check && !check()) {
-      const featureNames: Record<string, string> = {
-        [SubscriptionFeature.CHAT]: 'AI Chat',
-        [SubscriptionFeature.AI_NOTE]: 'AI Notes',
-        [SubscriptionFeature.SEMANTIC_SEARCH]: 'Semantic Search',
-        [SubscriptionFeature.VECTORIZATION]: 'Document Vectorization',
-        [SubscriptionFeature.ADVANCED_MODELS]: 'Advanced Models',
-        [SubscriptionFeature.EXPORT_NOTES]: 'Export Notes',
-        [SubscriptionFeature.API_ACCESS]: 'API Access',
-      };
-
-      throw new ForbiddenException(
-        `You have reached the limit for ${featureNames[feature] || feature}. Upgrade your plan to continue.`,
-      );
+      throw new ForbiddenException({
+        code: ErrorCode.FEATURE_NOT_AVAILABLE,
+        params: { feature },
+      });
     }
 
     request.subscription = subscription;

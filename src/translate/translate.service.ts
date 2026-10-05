@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import axios, { AxiosInstance } from 'axios';
 import { Agent as HttpAgent } from 'http';
 import { Agent as HttpsAgent } from 'https';
+import { ErrorCode } from '../common/errors/error-codes';
 
 export interface TranslateResult {
   translatedText: string;
@@ -49,9 +50,10 @@ export class TranslateService {
     targetLanguage = 'es',
   ): Promise<TranslateResult> {
     if (!this.apiKey) {
-      throw new InternalServerErrorException(
-        'Translation API key is not configured. Set DEEPL_API_KEY.',
-      );
+      throw new InternalServerErrorException({
+        code: ErrorCode.TRANSLATION_FAILED,
+        message: 'Translation API key is not configured. Set DEEPL_API_KEY.',
+      });
     }
 
     try {
@@ -75,7 +77,9 @@ export class TranslateService {
         'Translation request failed:',
         error instanceof Error ? error.stack : String(error),
       );
-      throw new InternalServerErrorException('Translation failed');
+      throw new InternalServerErrorException({
+        code: ErrorCode.TRANSLATION_FAILED,
+      });
     }
   }
 }

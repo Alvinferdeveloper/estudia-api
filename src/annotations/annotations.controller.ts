@@ -15,6 +15,7 @@ import { AnnotationsService } from './annotations.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -76,9 +77,9 @@ export class AnnotationsController {
     if (createAnnotationDto.aiResponse) {
       const canUse = await this.subscriptionsService.canUseAiNote(userId);
       if (!canUse) {
-        throw new ForbiddenException(
-          'You have reached your AI notes limit. Upgrade your plan to continue.',
-        );
+        throw new ForbiddenException({
+          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
+        });
       }
       await this.subscriptionsService.incrementAiNoteUsage(userId);
     }
@@ -122,9 +123,9 @@ export class AnnotationsController {
     if (updateAnnotationDto.aiResponse) {
       const canUse = await this.subscriptionsService.canUseAiNote(userId);
       if (!canUse) {
-        throw new ForbiddenException(
-          'You have reached your AI notes limit. Upgrade your plan to continue.',
-        );
+        throw new ForbiddenException({
+          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
+        });
       }
       await this.subscriptionsService.incrementAiNoteUsage(userId);
     }

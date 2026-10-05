@@ -8,6 +8,7 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
+import { ErrorCode } from '../errors/error-codes';
 
 export enum UsageType {
   CHAT = 'chat',
@@ -33,17 +34,17 @@ export class UsageInterceptor implements NestInterceptor {
           if (usageType === UsageType.CHAT) {
             const canUse = await this.subscriptionsService.canUseChat(userId);
             if (!canUse) {
-              throw new ForbiddenException(
-                'You have reached your chat message limit. Upgrade your plan to continue.',
-              );
+              throw new ForbiddenException({
+                code: ErrorCode.CHAT_LIMIT_REACHED,
+              });
             }
             await this.subscriptionsService.incrementChatUsage(userId);
           } else if (usageType === UsageType.AI_NOTE) {
             const canUse = await this.subscriptionsService.canUseAiNote(userId);
             if (!canUse) {
-              throw new ForbiddenException(
-                'You have reached your AI notes limit. Upgrade your plan to continue.',
-              );
+              throw new ForbiddenException({
+                code: ErrorCode.AI_NOTES_LIMIT_REACHED,
+              });
             }
             await this.subscriptionsService.incrementAiNoteUsage(userId);
           }

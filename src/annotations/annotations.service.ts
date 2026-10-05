@@ -6,6 +6,7 @@ import ankiExport from 'anki-apkg-export';
 import { Annotation } from '../typeorm/entities/Annotation.entity';
 import { Document } from '../typeorm/entities/Document.entity';
 import { cleanMarkdownText } from '../common/utils/clean-text.util';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Injectable()
 export class AnnotationsService {
@@ -132,7 +133,9 @@ export class AnnotationsService {
       where: { id: documentId, userId },
     });
     if (!document) {
-      throw new UnauthorizedException('Access to this document is denied');
+      throw new UnauthorizedException({
+        code: ErrorCode.DOCUMENT_ACCESS_DENIED,
+      });
     }
   }
 

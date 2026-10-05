@@ -19,6 +19,7 @@ import {
   AnnotationRect,
 } from '../typeorm/entities/Annotation.entity';
 import { VocabularyExplanation } from '../typeorm/entities/VocabularyEntry.entity';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -55,9 +56,9 @@ export class VocabularyController {
     if (createVocabularyDto.explanation) {
       const canUse = await this.subscriptionsService.canUseAiNote(userId);
       if (!canUse) {
-        throw new ForbiddenException(
-          'You have reached your AI notes limit. Upgrade your plan to continue.',
-        );
+        throw new ForbiddenException({
+          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
+        });
       }
       await this.subscriptionsService.incrementAiNoteUsage(userId);
     }
@@ -84,9 +85,9 @@ export class VocabularyController {
     if (updateVocabularyDto.explanation) {
       const canUse = await this.subscriptionsService.canUseAiNote(userId);
       if (!canUse) {
-        throw new ForbiddenException(
-          'You have reached your AI notes limit. Upgrade your plan to continue.',
-        );
+        throw new ForbiddenException({
+          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
+        });
       }
       await this.subscriptionsService.incrementAiNoteUsage(userId);
     }

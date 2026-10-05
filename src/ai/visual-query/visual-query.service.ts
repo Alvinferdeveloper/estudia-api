@@ -4,6 +4,7 @@ import { createVisualQueryProvider } from '../providers/visual-query-provider.fa
 import type { VisualQueryProvider } from '../providers/visual-query-provider.factory';
 import 'dotenv/config';
 import { responseLanguageInstruction } from '../language';
+import { ErrorCode } from '../../common/errors/error-codes';
 
 export interface VisualQueryParams {
   documentId: string;
@@ -43,7 +44,10 @@ export class VisualQueryService {
     let mimeType = 'image/png';
 
     if (!question || !question.trim()) {
-      throw new BadRequestException('question is required');
+      throw new BadRequestException({
+        code: ErrorCode.INVALID_REQUEST,
+        message: 'question is required',
+      });
     }
 
     if (imageXref !== undefined) {
@@ -52,15 +56,18 @@ export class VisualQueryService {
         userId,
       );
       if (!document.publicUrl) {
-        throw new BadRequestException('Document has no accessible file URL');
+        throw new BadRequestException({
+          code: ErrorCode.DOCUMENT_FILE_UNAVAILABLE,
+        });
       }
 
       const extractUrl = `${this.parserUrl}/documents/extract-image?pdf_url=${encodeURIComponent(document.publicUrl)}&xref=${imageXref}`;
       const response = await fetch(extractUrl);
       if (!response.ok) {
-        throw new BadRequestException(
-          `Failed to extract image xref=${imageXref} (page ${pageNumber}): ${response.status}`,
-        );
+        throw new BadRequestException({
+          code: ErrorCode.IMAGE_EXTRACTION_FAILED,
+          message: `Failed to extract image xref=${imageXref} (page ${pageNumber}): ${response.status}`,
+        });
       }
 
       const data = (await response.json()) as ExtractImageResponse;
@@ -73,9 +80,10 @@ export class VisualQueryService {
         imageBase64 = dataUrlMatch[2];
       }
     } else {
-      throw new BadRequestException(
-        'Either imageBase64 or imageXref must be provided',
-      );
+      throw new BadRequestException({
+        code: ErrorCode.INVALID_REQUEST,
+        message: 'Either imageBase64 or imageXref must be provided',
+      });
     }
 
     // TODO: no se persiste la pregunta/respuesta en este MVP (interacción

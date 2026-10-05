@@ -14,6 +14,7 @@ import {
 import { FoldersService } from './folders.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller('folders')
 @UseGuards(AuthGuard)
@@ -68,7 +69,7 @@ export class FoldersController {
   ) {
     const folder = await this.foldersService.findOneFolder(id, userId);
     if (!folder) {
-      throw new NotFoundException('Folder not found');
+      throw new NotFoundException({ code: ErrorCode.FOLDER_NOT_FOUND });
     }
     return folder;
   }

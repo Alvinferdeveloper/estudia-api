@@ -14,6 +14,7 @@ import { TopicsService } from './topics.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { Request } from 'express';
 import { CurrentUserId } from '../common/decorators/user.decorator';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller('topics')
 @UseGuards(AuthGuard)
@@ -38,7 +39,7 @@ export class TopicsController {
   async findOneTopic(@Param('id') id: string, @CurrentUserId() userId: string) {
     const topic = await this.topicsService.findOneTopic(id, userId);
     if (!topic) {
-      throw new NotFoundException('Topic not found');
+      throw new NotFoundException({ code: ErrorCode.TOPIC_NOT_FOUND });
     }
     return topic;
   }

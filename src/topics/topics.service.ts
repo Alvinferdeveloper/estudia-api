@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Topic } from '../typeorm/entities/Topic.entity';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Injectable()
 export class TopicsService {
@@ -46,7 +47,7 @@ export class TopicsService {
       where: { id, userId },
     });
     if (!topic) {
-      throw new NotFoundException('Topic not found');
+      throw new NotFoundException({ code: ErrorCode.TOPIC_NOT_FOUND });
     }
     topic.name = name;
     topic.color = color;
@@ -56,7 +57,7 @@ export class TopicsService {
   async removeTopic(id: string, userId: string): Promise<void> {
     const result = await this.topicsRepository.delete({ id, userId });
     if (result.affected === 0) {
-      throw new NotFoundException('Topic not found');
+      throw new NotFoundException({ code: ErrorCode.TOPIC_NOT_FOUND });
     }
   }
 }

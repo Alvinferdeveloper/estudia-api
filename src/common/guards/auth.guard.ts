@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { auth } from '../../lib/auth';
+import { ErrorCode } from '../errors/error-codes';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -30,14 +31,14 @@ export class AuthGuard implements CanActivate {
       });
 
       if (!result || !result.session || !result.user) {
-        throw new UnauthorizedException('User not authenticated');
+        throw new UnauthorizedException({ code: ErrorCode.UNAUTHENTICATED });
       }
 
       request['userId'] = result.session.userId;
       request['user'] = result.user as any;
       return true;
     } catch (error) {
-      throw new UnauthorizedException('User not authenticated');
+      throw new UnauthorizedException({ code: ErrorCode.UNAUTHENTICATED });
     }
   }
 }
