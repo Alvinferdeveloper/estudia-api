@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -93,7 +93,7 @@ export class VocabularyService {
       where: { id: documentId, userId },
     });
     if (!document) {
-      throw new UnauthorizedException({
+      throw new ForbiddenException({
         code: ErrorCode.DOCUMENT_ACCESS_DENIED,
       });
     }

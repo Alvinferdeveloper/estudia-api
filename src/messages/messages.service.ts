@@ -1,6 +1,6 @@
 import {
   Injectable,
-  UnauthorizedException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -184,7 +184,7 @@ export class MessagesService {
       userId,
     );
     if (conversation.documentId !== documentId) {
-      throw new UnauthorizedException({
+      throw new NotFoundException({
         code: ErrorCode.CONVERSATION_NOT_FOUND,
         message: 'Conversation does not belong to document',
       });
@@ -200,7 +200,7 @@ export class MessagesService {
       where: { id: documentId, userId },
     });
     if (!document) {
-      throw new UnauthorizedException({
+      throw new ForbiddenException({
         code: ErrorCode.DOCUMENT_ACCESS_DENIED,
       });
     }

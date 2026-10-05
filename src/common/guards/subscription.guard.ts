@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
 import { ErrorCode } from '../errors/error-codes';
@@ -26,7 +27,7 @@ export class SubscriptionGuard implements CanActivate {
     const userId = request.user?.id;
 
     if (!userId) {
-      throw new ForbiddenException({ code: ErrorCode.UNAUTHENTICATED });
+      throw new UnauthorizedException({ code: ErrorCode.UNAUTHENTICATED });
     }
 
     const subscription =
@@ -53,7 +54,7 @@ export class FeatureGuard implements CanActivate {
       .pop() as SubscriptionFeature;
 
     if (!userId) {
-      throw new ForbiddenException({ code: ErrorCode.UNAUTHENTICATED });
+      throw new UnauthorizedException({ code: ErrorCode.UNAUTHENTICATED });
     }
 
     const subscription =
