@@ -170,13 +170,24 @@ export class SubscriptionsService {
       order: { price: 'ASC' },
     });
 
+    // Only structured limits: the frontend builds the translated plan copy from them.
     return plans.map((plan) => ({
       plan: plan.plan,
-      name: plan.name,
       price: Number(plan.price),
-      description: plan.description,
-      features: plan.features || [],
       isPopular: plan.isPopular,
+      limits: {
+        chatMessages: plan.chatMessagesLimit,
+        aiNotes: plan.aiNotesLimit,
+        documents: plan.documentsLimit,
+        storageBytes: Number(plan.storageLimitBytes),
+      },
+      features: {
+        semanticSearch: plan.hasSemanticSearch,
+        vectorization: plan.hasVectorization,
+        advancedModels: plan.hasAdvancedModels,
+        exportNotes: plan.hasExportNotes,
+        apiAccess: plan.hasApiAccess,
+      },
     }));
   }
 
