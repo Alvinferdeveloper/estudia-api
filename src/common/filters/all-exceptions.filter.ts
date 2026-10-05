@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ErrorCode } from '../errors/error-codes';
+import { buildErrorResponse } from '../errors/error-response';
 
 const STATUS_CODES: Partial<Record<number, ErrorCode>> = {
   [HttpStatus.UNAUTHORIZED]: ErrorCode.UNAUTHENTICATED,
@@ -65,14 +66,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    response.status(status).json({
-      statusCode: status,
+    const errorResponse = buildErrorResponse(status, request.url, {
       code,
       params,
-      // Server-side details (provider errors, config) stay in the logs.
-      message: status >= 500 ? code : message,
-      timestamp: new Date().toISOString(),
-      path: request.url,
+      message,
     });
+    response.status(status).json(errorResponse);
   }
 }

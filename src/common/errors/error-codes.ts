@@ -47,11 +47,5 @@ export enum ErrorCode {
   PAYMENT_CAPTURE_FAILED = 'PAYMENT_CAPTURE_FAILED',
   PAYMENT_CREATION_FAILED = 'PAYMENT_CREATION_FAILED',
   SUBSCRIPTION_ACTIVATION_FAILED = 'SUBSCRIPTION_ACTIVATION_FAILED',
-}
-
-// Body passed to Nest's built-in exceptions; `message` is an optional English detail for logs.
-export interface ErrorBody {
-  code: ErrorCode;
-  params?: Record<string, string | number>;
-  message?: string;
+  INVALID_WEBHOOK_SIGNATURE = 'INVALID_WEBHOOK_SIGNATURE',
 }

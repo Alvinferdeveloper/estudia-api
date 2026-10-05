@@ -14,6 +14,7 @@ import { CurrentUserId } from '../common/decorators/user.decorator';
 import { SubscriptionPlan } from '../typeorm/entities/Payment.entity';
 import { PayPalClient } from './lib/paypal-client';
 import type { Request } from 'express';
+import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller('payments')
 export class PaymentsController {
@@ -94,7 +95,7 @@ export class PaymentsController {
     );
 
     if (!isValid) {
-      return { status: 'error', message: 'Invalid webhook signature' };
+      return { status: 'error', code: ErrorCode.INVALID_WEBHOOK_SIGNATURE };
     }
 
     await this.paymentsService.handleWebhook(req.body);

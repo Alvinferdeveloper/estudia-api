@@ -6,6 +6,7 @@ import {
   Res,
   Req,
   Logger,
+  HttpStatus,
 } from '@nestjs/common';
 import { Readable } from 'stream';
 import type { Request, Response } from 'express';
@@ -16,6 +17,8 @@ import { ChatDto } from './dto/chat.dto';
 import { GenerateQuestionsDto, EvaluateAnswerDto } from './dto/exam.dto';
 import { NoteDto } from './dto/note.dto';
 import { VocabularyDto } from './dto/vocabulary.dto';
+import { ErrorCode } from '../common/errors/error-codes';
+import { buildErrorResponse } from '../common/errors/error-response';
 
 @Controller('ai')
 @UseGuards(AuthGuard)
@@ -31,25 +34,21 @@ export class AIController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    try {
-      const stream = await this.aiService.streamChat(
-        dto.messages as any,
-        userId,
-        dto.documentId,
-        dto.documentName,
-        dto.responseLanguage,
-      );
+    // Errors before streaming reach the global filter, which sends their code.
+    const stream = await this.aiService.streamChat(
+      dto.messages as any,
+      userId,
+      dto.documentId,
+      dto.documentName,
+      dto.responseLanguage,
+    );
 
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
 
-      this.pipeStream(res, req, stream, 'chat');
-    } catch (error) {
-      this.logger.error('Chat failed to start:', this.getStack(error));
-      this.sendError(res, 'Failed to start chat stream');
-    }
+    this.pipeStream(res, req, stream, 'chat');
   }
 
   @Post('notes/stream')
@@ -59,19 +58,14 @@ export class AIController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    try {
-      const stream = await this.aiService.streamNote(dto);
+    const stream = await this.aiService.streamNote(dto);
 
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
 
-      this.pipeStream(res, req, stream, 'notes/stream');
-    } catch (error) {
-      this.logger.error('Note stream failed to start:', this.getStack(error));
-      this.sendError(res, 'Failed to start note stream');
-    }
+    this.pipeStream(res, req, stream, 'notes/stream');
   }
 
   private pipeStream(
@@ -84,20 +78,15 @@ export class AIController {
 
     nodeStream.on('error', (err: Error) => {
       this.logger.error(`${feature} stream error:`, this.getStack(err));
-      if (!res.headersSent) {
-        this.sendError(res, 'AI stream failed');
+      // Mid-stream, ending early is the signal (chat already sent a coded chunk).
+      if (res.headersSent) {
+        res.end();
         return;
       }
-      try {
-        res.write(
-          `event: error\ndata: ${JSON.stringify({
-            message: err.message || 'AI stream failed',
-          })}\n\n`,
-        );
-      } catch {
-        /* connection already broken */
-      }
-      res.end();
+      const body = buildErrorResponse(HttpStatus.BAD_GATEWAY, req.url, {
+        code: ErrorCode.AI_PROVIDER_ERROR,
+      });
+      res.status(HttpStatus.BAD_GATEWAY).json(body);
     });
 
     req.on('aborted', () => {
@@ -117,14 +106,6 @@ export class AIController {
     });
 
     nodeStream.pipe(res);
-  }
-
-  private sendError(res: Response, message: string): void {
-    if (res.headersSent) {
-      res.end();
-      return;
-    }
-    res.status(500).json({ error: message });
   }
 
   private getStack(error: unknown): string | undefined {

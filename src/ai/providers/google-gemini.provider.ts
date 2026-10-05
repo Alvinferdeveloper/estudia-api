@@ -17,6 +17,7 @@ import type {
   StreamTextOptions,
 } from './ai-provider.interface';
 import { AIProviderException } from './ai-provider.exception';
+import { ErrorCode } from '../../common/errors/error-codes';
 
 const MODELS: Record<AIFeature, string> = {
   chat: 'gemini-2.5-flash',
@@ -83,7 +84,11 @@ export class GoogleGeminiProvider implements AIProvider {
       const response =
         feature === 'chat'
           ? createUIMessageStreamResponse({
-              stream: toUIMessageStream({ stream: result.stream }),
+              stream: toUIMessageStream({
+                stream: result.stream,
+                // Client gets this as `errorText`; never the raw provider error.
+                onError: () => ErrorCode.AI_PROVIDER_ERROR,
+              }),
             })
           : createTextStreamResponse({
               stream: toTextStream({ stream: result.stream }),

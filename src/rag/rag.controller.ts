@@ -54,14 +54,14 @@ export class RagController {
     }
     const isVectorized = await this.ragService.isDocumentVectorized(documentId);
     if (!isVectorized) {
-      return { results: [], message: 'Document not vectorized yet' };
+      return { results: [], vectorized: false };
     }
     const results = await this.ragService.searchDocument(
       documentId,
       query,
       limit ? parseInt(limit, 10) : 5,
     );
-    return { results };
+    return { results, vectorized: true };
   }
 
   @Get(':id/vectorize-status')
