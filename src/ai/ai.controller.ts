@@ -16,7 +16,6 @@ import { AIService } from './ai.service';
 import { ChatService } from './chat/chat.service';
 import { CreditsService } from '../entitlements/credits/credits.service';
 import { ChatDto } from './dto/chat.dto';
-import { GenerateQuestionsDto, EvaluateAnswerDto } from './dto/exam.dto';
 import { NoteDto } from './dto/note.dto';
 import { VocabularyDto } from './dto/vocabulary.dto';
 import { ErrorCode } from '../common/errors/error-codes';
@@ -131,22 +130,5 @@ export class AIController {
 
   private getStack(error: unknown): string | undefined {
     return error instanceof Error ? error.stack : String(error);
-  }
-
-  @Post('exam/generate')
-  async generateQuestions(
-    @CurrentUserId() userId: string,
-    @Body() dto: GenerateQuestionsDto,
-  ) {
-    const questions = await this.aiService.generateQuestions(dto);
-    return { questions };
-  }
-
-  @Post('exam/evaluate')
-  async evaluateAnswer(
-    @CurrentUserId() userId: string,
-    @Body() dto: EvaluateAnswerDto,
-  ) {
-    return this.aiService.evaluateAnswer(dto);
   }
 }

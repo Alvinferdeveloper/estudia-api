@@ -5,6 +5,7 @@ import type {
   AIProvider,
   StreamTextResult,
 } from './providers/ai-provider.interface';
+import { AIProviderException } from './providers/ai-provider.exception';
 import {
   buildGenerateQuestionsPrompt,
   buildEvaluateAnswerPrompt,
@@ -97,31 +98,16 @@ export class AIService {
       const count = questionsPerType + (i < remainder ? 1 : 0);
       if (count === 0) continue;
 
-      const prompt = buildGenerateQuestionsPrompt({
-        content,
-        pages,
-        difficulty,
-        type,
-        count,
-        responseLanguage,
-      });
-
       try {
-        const { text } = await this.provider.generateText({
-          feature: 'exam',
-          systemPrompt: prompt,
-        });
-
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          const withType = parsed.map((q: any) => ({
-            ...q,
-            type, // Force the requested type, ignoring the LLM's output
-            idealAnswer: String(q.correctAnswer ?? q.idealAnswer ?? ''),
-          }));
-          allQuestions = [...allQuestions, ...withType];
-        }
+        const questions = await this.generateSingleTypeQuestions(
+          content,
+          pages,
+          difficulty,
+          type,
+          count,
+          responseLanguage,
+        );
+        allQuestions = [...allQuestions, ...questions];
       } catch (e) {
         this.logger.error(
           `Failed to generate ${type} questions:`,
@@ -130,27 +116,14 @@ export class AIService {
       }
     }
 
-    const shuffled = allQuestions.sort(() => Math.random() - 0.5);
-    return shuffled;
+    // Every type failing is a failed generation, so its credits get refunded.
+    if (allQuestions.length === 0) {
+      throw new AIProviderException('No exam questions were generated');
+    }
+    return allQuestions.sort(() => Math.random() - 0.5);
   }
 
-  private normalizeQuestionType(
-    type: string | undefined,
-    fallback: QuestionType,
-  ): QuestionType {
-    const validTypes: QuestionType[] = [
-      'open',
-      'multiple_choice',
-      'true_false',
-      'fill_blank',
-    ];
-    return validTypes.includes(type as QuestionType)
-      ? (type as QuestionType)
-      : fallback === 'mixed'
-        ? 'open'
-        : fallback;
-  }
-
+  // Throws instead of falling back, so a failed generation isn't charged as if it succeeded.
   private async generateSingleTypeQuestions(
     content: string,
     pages: number[],
@@ -159,38 +132,31 @@ export class AIService {
     numQuestions: number,
     responseLanguage?: string,
   ): Promise<any[]> {
-    const prompt = buildGenerateQuestionsPrompt({
-      content,
-      pages,
-      difficulty,
-      type,
-      count: numQuestions,
-      responseLanguage,
+    const { text } = await this.provider.generateText({
+      feature: 'exam',
+      systemPrompt: buildGenerateQuestionsPrompt({
+        content,
+        pages,
+        difficulty,
+        type,
+        count: numQuestions,
+        responseLanguage,
+      }),
     });
 
     try {
-      const { text } = await this.provider.generateText({
-        feature: 'exam',
-        systemPrompt: prompt,
-      });
-
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const questions = JSON.parse(jsonMatch[0]);
-        return questions.map((q: any) => ({
-          ...q,
-          type: type || 'open', // Force the requested type
-          idealAnswer: String(q.correctAnswer ?? q.idealAnswer ?? ''),
-        }));
-      }
-    } catch (e) {
-      this.logger.error(
-        'Failed to parse AI response:',
-        e instanceof Error ? e.stack : String(e),
+      const questions = JSON.parse(text.match(/\[[\s\S]*\]/)?.[0] ?? '');
+      return questions.map((q: any) => ({
+        ...q,
+        type, // Force the requested type, ignoring the model's output
+        idealAnswer: String(q.correctAnswer ?? q.idealAnswer ?? ''),
+      }));
+    } catch (error) {
+      throw new AIProviderException(
+        `The model returned no parseable ${type} questions`,
+        error,
       );
     }
-
-    return generateFallbackQuestions(type, numQuestions);
   }
 
   async evaluateAnswer(data: {

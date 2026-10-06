@@ -1,49 +1,32 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
   Param,
-  UseGuards,
+  ParseUUIDPipe,
+  Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ExamService } from './exam.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
-import { ExamMode, QuestionType } from '../typeorm/entities/Exam.entity';
-
-interface CreateExamDto {
-  documentId: string;
-  pages: number[];
-  mode: ExamMode;
-  difficulty?: string;
-  title?: string;
-  questionType?: QuestionType;
-  totalQuestions?: number;
-}
-
-interface SaveResultDto {
-  examId: string;
-  score: number;
-  correctAnswers: number;
-  totalQuestions: number;
-}
-
-interface SaveQuestionsDto {
-  examId: string;
-  questions: {
-    text: string;
-    type: string;
-    options?: string;
-    idealAnswer: string;
-    order: number;
-  }[];
-}
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import { CreditsService } from '../entitlements/credits/credits.service';
+import {
+  EvaluateAnswerDto,
+  GenerateExamDto,
+  SaveExamResultDto,
+} from './dto/exam.dto';
 
 @Controller('exam')
 @UseGuards(AuthGuard)
 export class ExamController {
-  constructor(private readonly examService: ExamService) {}
+  constructor(
+    private readonly examService: ExamService,
+    private readonly entitlementsService: EntitlementsService,
+    private readonly creditsService: CreditsService,
+  ) {}
 
   @Get()
   async getExams(
@@ -54,51 +37,62 @@ export class ExamController {
   }
 
   @Get(':id')
-  async getExam(@CurrentUserId() userId: string, @Param('id') examId: string) {
-    return this.examService.getExamById(examId);
+  async getExam(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
+  ) {
+    return this.examService.getOwnedExam(userId, examId);
   }
 
   @Get(':id/questions')
   async getExamQuestions(
     @CurrentUserId() userId: string,
-    @Param('id') examId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
   ) {
-    return this.examService.getExamQuestionsByExamId(examId);
+    return this.examService.getQuestions(userId, examId);
   }
 
   @Get(':id/results')
   async getExamResults(
     @CurrentUserId() userId: string,
-    @Param('id') examId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
   ) {
-    return this.examService.getExamResults(examId);
+    return this.examService.getResults(userId, examId);
   }
 
-  @Post()
-  async createExam(
+  // The price scales with the exam size; evaluating its answers is included.
+  @Post('generate')
+  async generate(
     @CurrentUserId() userId: string,
-    @Body() createExamDto: CreateExamDto,
+    @Body() dto: GenerateExamDto,
   ) {
-    return this.examService.createExam(userId, createExamDto);
-  }
-
-  @Post('questions')
-  async saveQuestions(
-    @CurrentUserId() userId: string,
-    @Body() questionsDto: SaveQuestionsDto,
-  ) {
-    await this.examService.addQuestions(
-      questionsDto.examId,
-      questionsDto.questions,
+    await this.entitlementsService.assertCap(
+      userId,
+      'examQuestions',
+      dto.questionCount,
     );
-    return { success: true };
+    return this.creditsService.charge(
+      userId,
+      { action: 'exam.generate', params: { questions: dto.questionCount } },
+      () => this.examService.generate(userId, dto),
+    );
+  }
+
+  @Post(':id/questions/:questionId/evaluate')
+  async evaluateAnswer(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
+    @Param('questionId', ParseUUIDPipe) questionId: string,
+    @Body() dto: EvaluateAnswerDto,
+  ) {
+    return this.examService.evaluateAnswer(userId, examId, questionId, dto);
   }
 
   @Post('result')
   async saveResult(
     @CurrentUserId() userId: string,
-    @Body() resultDto: SaveResultDto,
+    @Body() dto: SaveExamResultDto,
   ) {
-    return this.examService.saveExamResult(resultDto);
+    return this.examService.saveResult(userId, dto);
   }
 }

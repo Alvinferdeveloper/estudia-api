@@ -30,6 +30,10 @@ export class ExamQuestion {
   @Column({ type: 'text', nullable: true })
   idealAnswer: string | null;
 
+  // AI evaluations already spent on this question; generation pays for a bounded number of them.
+  @Column({ type: 'int', default: 0 })
+  evaluationCount: number;
+
   @ManyToOne(() => Exam, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'examId' })
   exam: Exam;

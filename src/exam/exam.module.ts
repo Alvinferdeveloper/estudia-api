@@ -6,10 +6,14 @@ import { ExamResult } from '../typeorm/entities/ExamResult.entity';
 import { Document } from '../typeorm/entities/Document.entity';
 import { ExamController } from './exam.controller';
 import { ExamService } from './exam.service';
+import { AIModule } from '../ai/ai.module';
+import { EntitlementsModule } from '../entitlements/entitlements.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Exam, ExamQuestion, ExamResult, Document]),
+    AIModule,
+    EntitlementsModule,
   ],
   controllers: [ExamController],
   providers: [ExamService],

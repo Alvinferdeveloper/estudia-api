@@ -1,152 +1,185 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Exam, ExamMode, QuestionType } from '../typeorm/entities/Exam.entity';
+import { DataSource, Repository } from 'typeorm';
+import { Exam, QuestionType } from '../typeorm/entities/Exam.entity';
 import { ExamQuestion } from '../typeorm/entities/ExamQuestion.entity';
 import { ExamResult } from '../typeorm/entities/ExamResult.entity';
 import { Document } from '../typeorm/entities/Document.entity';
 import { ErrorCode } from '../common/errors/error-codes';
+import { AIService } from '../ai/ai.service';
+import { aiCallContext } from '../ai/metering/ai-call-context';
+import type {
+  EvaluateAnswerDto,
+  GenerateExamDto,
+  SaveExamResultDto,
+} from './dto/exam.dto';
 
-interface CreateExamDto {
-  documentId: string;
-  pages: number[];
-  mode: ExamMode;
-  difficulty?: string;
-  title?: string;
-  questionType?: QuestionType;
-  totalQuestions?: number;
-}
+// Open answers are graded by the model; generation pays for this many attempts per question.
+const MAX_AI_EVALUATIONS_PER_QUESTION = 5;
 
-interface SaveExamResultDto {
-  examId: string;
-  score: number;
-  correctAnswers: number;
-  totalQuestions: number;
+interface GeneratedQuestion {
+  text: string;
+  type: QuestionType;
+  options?: string[];
+  idealAnswer: string;
 }
 
 @Injectable()
 export class ExamService {
   constructor(
+    private readonly dataSource: DataSource,
+    private readonly aiService: AIService,
     @InjectRepository(Exam)
-    private examRepository: Repository<Exam>,
+    private readonly examRepository: Repository<Exam>,
     @InjectRepository(ExamQuestion)
-    private questionRepository: Repository<ExamQuestion>,
+    private readonly questionRepository: Repository<ExamQuestion>,
     @InjectRepository(ExamResult)
-    private resultRepository: Repository<ExamResult>,
+    private readonly resultRepository: Repository<ExamResult>,
     @InjectRepository(Document)
-    private documentRepository: Repository<Document>,
+    private readonly documentRepository: Repository<Document>,
   ) {}
 
-  async createExam(userId: string, dto: CreateExamDto): Promise<Exam> {
+  // Generates the questions and stores the exam with them in one step, so only server-made
+  // questions can later be evaluated.
+  async generate(
+    userId: string,
+    dto: GenerateExamDto,
+  ): Promise<{ exam: Exam; questions: ExamQuestion[] }> {
     await this.verifyDocumentAccess(dto.documentId, userId);
 
-    const validTypes = [
-      'open',
-      'multiple_choice',
-      'true_false',
-      'fill_blank',
-      'mixed',
-    ];
-    const validModes = ['quick_review', 'exam_simulation', 'custom'];
+    const generated: GeneratedQuestion[] =
+      await this.aiService.generateQuestions({
+        content: dto.content,
+        pages: dto.pages,
+        difficulty: dto.difficulty,
+        questionType: dto.questionType,
+        numQuestions: dto.questionCount,
+        responseLanguage: dto.responseLanguage,
+      });
 
-    const exam = this.examRepository.create({
-      userId,
-      documentId: dto.documentId,
-      pages: dto.pages,
-      mode: (validModes.includes(dto.mode)
-        ? dto.mode
-        : 'quick_review') as ExamMode,
-      difficulty: dto.difficulty || 'medium',
-      title: dto.title || 'Exam',
-      questionType:
-        dto.questionType && validTypes.includes(dto.questionType)
-          ? dto.questionType
-          : QuestionType.OPEN,
-      totalQuestions: dto.totalQuestions || 5,
+    return this.dataSource.transaction(async (manager) => {
+      const exam = await manager.save(
+        manager.create(Exam, {
+          userId,
+          documentId: dto.documentId,
+          pages: dto.pages,
+          mode: dto.mode,
+          difficulty: dto.difficulty,
+          title: dto.title || 'Exam',
+          questionType: dto.questionType,
+          totalQuestions: generated.length,
+        }),
+      );
+      const questions = await manager.save(
+        generated.map((question, index) =>
+          manager.create(ExamQuestion, {
+            examId: exam.id,
+            order: index + 1,
+            text: question.text,
+            type: question.type,
+            options: question.options ? JSON.stringify(question.options) : null,
+            idealAnswer: question.idealAnswer,
+          }),
+        ),
+      );
+      return { exam, questions };
     });
-
-    return this.examRepository.save(exam);
   }
 
-  async addQuestions(
+  async evaluateAnswer(
+    userId: string,
     examId: string,
-    questions: {
-      text: string;
-      type: string;
-      options?: string;
-      idealAnswer: string;
-      order: number;
-    }[],
-  ): Promise<void> {
-    const validTypes = [
-      'open',
-      'multiple_choice',
-      'true_false',
-      'fill_blank',
-      'mixed',
-    ];
+    questionId: string,
+    dto: EvaluateAnswerDto,
+  ): Promise<{ score: number; feedback: string }> {
+    await this.getOwnedExam(userId, examId);
+    const question = await this.questionRepository.findOne({
+      where: { id: questionId, examId },
+    });
+    if (!question) {
+      throw new NotFoundException({ code: ErrorCode.EXAM_NOT_FOUND });
+    }
 
-    const questionEntities = questions.map((q) =>
-      this.questionRepository.create({
-        examId,
-        text: q.text,
-        type: (validTypes.includes(q.type) ? q.type : 'open') as QuestionType,
-        options: q.options || null,
-        idealAnswer: q.idealAnswer,
-        order: q.order,
+    // Closed questions are graded without the model, so only open ones spend attempts.
+    if (question.type === QuestionType.OPEN) {
+      await this.spendEvaluation(question.id);
+    }
+
+    return aiCallContext.run({ userId }, () =>
+      this.aiService.evaluateAnswer({
+        question: question.text,
+        idealAnswer: question.idealAnswer ?? '',
+        questionType: question.type ?? QuestionType.OPEN,
+        userAnswer: dto.userAnswer,
+        responseLanguage: dto.responseLanguage,
       }),
     );
-
-    await this.questionRepository.save(questionEntities);
   }
 
-  async saveExamResult(dto: SaveExamResultDto): Promise<ExamResult> {
-    const examResult = this.resultRepository.create({
-      examId: dto.examId,
-      score: dto.score,
-      correctAnswers: dto.correctAnswers,
-      totalQuestions: dto.totalQuestions,
-    });
-
-    return this.resultRepository.save(examResult);
-  }
-
-  async getExamResults(examId: string): Promise<ExamResult[]> {
-    return this.resultRepository.find({
-      where: { examId },
-      order: { createdAt: 'DESC' },
-    });
+  async saveResult(
+    userId: string,
+    dto: SaveExamResultDto,
+  ): Promise<ExamResult> {
+    await this.getOwnedExam(userId, dto.examId);
+    return this.resultRepository.save(this.resultRepository.create(dto));
   }
 
   async getUserExams(userId: string, documentId?: string): Promise<Exam[]> {
-    const where: any = { userId };
-    if (documentId) {
-      where.documentId = documentId;
-    }
-
     return this.examRepository.find({
-      where,
+      where: documentId ? { userId, documentId } : { userId },
       relations: ['document'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  async getExamById(examId: string): Promise<Exam | null> {
-    return this.examRepository.findOne({
-      where: { id: examId },
+  async getOwnedExam(userId: string, examId: string): Promise<Exam> {
+    const exam = await this.examRepository.findOne({
+      where: { id: examId, userId },
       relations: ['document'],
     });
+    if (!exam) {
+      throw new NotFoundException({ code: ErrorCode.EXAM_NOT_FOUND });
+    }
+    return exam;
   }
 
-  async getExamQuestions(examId: string): Promise<ExamQuestion[]> {
+  async getQuestions(userId: string, examId: string): Promise<ExamQuestion[]> {
+    await this.getOwnedExam(userId, examId);
     return this.questionRepository.find({
       where: { examId },
       order: { order: 'ASC' },
     });
   }
 
-  async getExamQuestionsByExamId(examId: string): Promise<ExamQuestion[]> {
-    return this.getExamQuestions(examId);
+  async getResults(userId: string, examId: string): Promise<ExamResult[]> {
+    await this.getOwnedExam(userId, examId);
+    return this.resultRepository.find({
+      where: { examId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  // Conditional increment, so parallel requests can't exceed the paid attempts.
+  private async spendEvaluation(questionId: string): Promise<void> {
+    const result = await this.questionRepository
+      .createQueryBuilder()
+      .update(ExamQuestion)
+      .set({ evaluationCount: () => 'evaluationCount + 1' })
+      .where('id = :questionId AND evaluationCount < :max', {
+        questionId,
+        max: MAX_AI_EVALUATIONS_PER_QUESTION,
+      })
+      .execute();
+
+    if (!result.affected) {
+      throw new ForbiddenException({
+        code: ErrorCode.EVALUATION_LIMIT_REACHED,
+      });
+    }
   }
 
   private async verifyDocumentAccess(

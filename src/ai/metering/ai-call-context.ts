@@ -3,7 +3,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 // Who triggered the AI calls running inside a charged action, without threading it through every function.
 export interface AICallContext {
   userId: string;
-  ledgerEntryId: string;
+  // Absent for AI work already paid for by an earlier charge (e.g. exam answer evaluations).
+  ledgerEntryId?: string;
 }
 
 const storage = new AsyncLocalStorage<AICallContext>();
