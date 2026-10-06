@@ -35,6 +35,8 @@ import { VocabularyModule } from './vocabulary/vocabulary.module';
 import { VocabularyEntry } from './typeorm/entities/VocabularyEntry.entity';
 import { TranslateModule } from './translate/translate.module';
 import { AICallLog } from './typeorm/entities/AICallLog.entity';
+import { CreditUsage } from './typeorm/entities/CreditUsage.entity';
+import { CreditLedgerEntry } from './typeorm/entities/CreditLedgerEntry.entity';
 import { EntitlementsModule } from './entitlements/entitlements.module';
 
 @Module({
@@ -80,6 +82,8 @@ import { EntitlementsModule } from './entitlements/entitlements.module';
         DocumentImage,
         VocabularyEntry,
         AICallLog,
+        CreditUsage,
+        CreditLedgerEntry,
       ],
       synchronize: true,
       timezone: 'Z',

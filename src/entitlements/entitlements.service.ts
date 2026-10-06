@@ -20,8 +20,8 @@ import {
 export interface EffectiveEntitlements {
   plan: SubscriptionPlan;
   entitlements: PlanEntitlements;
-  // Start of the paid billing cycle; null on the free plan.
-  periodStart: Date | null;
+  // The paid billing period in force; null on the free plan.
+  billingPeriod: { start: Date; end: Date } | null;
 }
 
 @Injectable()
@@ -45,7 +45,12 @@ export class EntitlementsService {
     return {
       plan,
       entitlements: await this.getPlanEntitlements(plan),
-      periodStart: isPaidPeriodCurrent ? subscription.currentPeriodStart : null,
+      billingPeriod: isPaidPeriodCurrent
+        ? {
+            start: subscription.currentPeriodStart,
+            end: subscription.currentPeriodEnd,
+          }
+        : null,
     };
   }
 
