@@ -14,6 +14,7 @@ import {
 import { ErrorCode } from '../common/errors/error-codes';
 import {
   isWithinLimit,
+  parsePlanEntitlements,
   type PlanCap,
   type PlanEntitlements,
   type PlanFeature,
@@ -43,13 +44,14 @@ export class EntitlementsService {
   // Read on every check, so editing a plan applies to its subscribers immediately.
   async getPlanEntitlements(plan: SubscriptionPlan): Promise<PlanEntitlements> {
     const row = await this.planRepository.findOne({ where: { plan } });
-    if (!row?.entitlements) {
+    const parsed = parsePlanEntitlements(row?.entitlements);
+    if ('errors' in parsed) {
       throw new InternalServerErrorException({
-        code: ErrorCode.PLAN_NOT_FOUND,
-        message: `Plan ${plan} has no entitlements`,
+        code: ErrorCode.PLAN_MISCONFIGURED,
+        message: `Plan ${plan}: ${parsed.errors.join('; ')}`,
       });
     }
-    return row.entitlements;
+    return parsed.entitlements;
   }
 
   async assertFeature(userId: string, feature: PlanFeature): Promise<void> {

@@ -47,7 +47,8 @@ export const UNLIMITED = -1;
 export const isWithinLimit = (limit: number, value: number): boolean =>
   limit === UNLIMITED || value <= limit;
 
-export type CreditPeriod = 'daily' | 'monthly';
+export const CREDIT_PERIODS = ['daily', 'monthly'] as const;
+export type CreditPeriod = (typeof CREDIT_PERIODS)[number];
 
 export interface PlanEntitlements {
   credits: { amount: number; period: CreditPeriod };
@@ -55,3 +56,54 @@ export interface PlanEntitlements {
   quotas: Record<PlanQuota, number>;
   caps: Record<PlanCap, number>;
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isLimit = (value: unknown): value is number =>
+  Number.isInteger(value) && (value as number) >= UNLIMITED;
+
+// Every listed key present as a limit, and no keys the catalog doesn't know.
+const limitErrors = (
+  field: string,
+  value: unknown,
+  keys: readonly string[],
+): string[] => {
+  if (!isRecord(value)) return [`${field} must be an object`];
+  const missing = keys.filter((key) => !isLimit(value[key]));
+  const unknown = Object.keys(value).filter((key) => !keys.includes(key));
+  return [
+    ...missing.map((key) => `${field}.${key} must be an integer >= -1`),
+    ...unknown.map((key) => `${field}.${key} is not in the catalog`),
+  ];
+};
+
+// Plans are edited directly in the database, so their JSON is checked against the catalog
+// on every read: a typo fails loudly instead of silently granting or blocking something.
+export const parsePlanEntitlements = (
+  value: unknown,
+): { entitlements: PlanEntitlements } | { errors: string[] } => {
+  if (!isRecord(value)) return { errors: ['entitlements must be an object'] };
+  const { credits, features, quotas, caps } = value;
+
+  const errors = [
+    ...(isRecord(credits) && isLimit(credits.amount)
+      ? []
+      : ['credits.amount must be an integer >= -1']),
+    ...(isRecord(credits) &&
+    CREDIT_PERIODS.includes(credits.period as CreditPeriod)
+      ? []
+      : [`credits.period must be one of ${CREDIT_PERIODS.join(', ')}`]),
+    ...(Array.isArray(features)
+      ? features
+          .filter((f) => !PLAN_FEATURES.includes(f as PlanFeature))
+          .map((f) => `features: '${String(f)}' is not in the catalog`)
+      : ['features must be an array']),
+    ...limitErrors('quotas', quotas, PLAN_QUOTAS),
+    ...limitErrors('caps', caps, PLAN_CAPS),
+  ];
+
+  return errors.length
+    ? { errors }
+    : { entitlements: value as unknown as PlanEntitlements };
+};
