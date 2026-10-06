@@ -38,6 +38,7 @@ import { AICallLog } from './typeorm/entities/AICallLog.entity';
 import { CreditUsage } from './typeorm/entities/CreditUsage.entity';
 import { CreditLedgerEntry } from './typeorm/entities/CreditLedgerEntry.entity';
 import { EntitlementsModule } from './entitlements/entitlements.module';
+import { UsageModule } from './usage/usage.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { EntitlementsModule } from './entitlements/entitlements.module';
     RagModule,
     SubscriptionsModule,
     EntitlementsModule,
+    UsageModule,
     PaymentsModule,
     ExamModule,
     AIModule,

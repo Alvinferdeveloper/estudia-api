@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -6,7 +6,12 @@ import {
   SubscriptionPlan,
 } from '../typeorm/entities/Subscription.entity';
 import { Plan } from '../typeorm/entities/Plan.entity';
-import { ErrorCode } from '../common/errors/error-codes';
+
+export interface EffectivePlan {
+  plan: SubscriptionPlan;
+  // The paid billing period in force; null on the free plan.
+  billingPeriod: { start: Date; end: Date } | null;
+}
 
 const nextBillingPeriod = (start = new Date()) => {
   const end = new Date(start);
@@ -32,18 +37,6 @@ export class SubscriptionsService {
       subscription = this.subscriptionRepository.create({
         userId,
         plan: SubscriptionPlan.FREE,
-        isActive: true,
-        chatMessagesUsed: 0,
-        chatMessagesLimit: 30,
-        aiNotesUsed: 0,
-        aiNotesLimit: 20,
-        documentsLimit: 3,
-        storageLimitBytes: 52428800,
-        hasSemanticSearch: false,
-        hasVectorization: false,
-        hasAdvancedModels: false,
-        hasExportNotes: false,
-        hasApiAccess: false,
       });
       await this.subscriptionRepository.save(subscription);
     }
@@ -51,16 +44,23 @@ export class SubscriptionsService {
     return subscription;
   }
 
-  async getSubscription(userId: string): Promise<Subscription> {
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { userId },
-    });
+  // A paid plan applies until its period ends, even after cancelling; then the user is on free.
+  async getEffectivePlan(userId: string): Promise<EffectivePlan> {
+    const subscription = await this.getOrCreateSubscription(userId);
+    const isPaidPeriodCurrent =
+      subscription.plan !== SubscriptionPlan.FREE &&
+      !!subscription.currentPeriodEnd &&
+      subscription.currentPeriodEnd > new Date();
 
-    if (!subscription) {
-      throw new NotFoundException({ code: ErrorCode.SUBSCRIPTION_NOT_FOUND });
-    }
-
-    return subscription;
+    return isPaidPeriodCurrent
+      ? {
+          plan: subscription.plan,
+          billingPeriod: {
+            start: subscription.currentPeriodStart,
+            end: subscription.currentPeriodEnd,
+          },
+        }
+      : { plan: SubscriptionPlan.FREE, billingPeriod: null };
   }
 
   // Opens a paid billing period. What the plan grants is read from its row, never copied here.
@@ -115,68 +115,18 @@ export class SubscriptionsService {
     return this.subscriptionRepository.findOne({ where: { userId } });
   }
 
-  async getUsageStats(userId: string) {
-    const subscription = await this.getOrCreateSubscription(userId);
-
-    return {
-      plan: subscription.plan,
-      isActive: subscription.isActive,
-      chat: {
-        used: subscription.chatMessagesUsed,
-        limit: subscription.chatMessagesLimit,
-        remaining: Math.max(
-          0,
-          subscription.chatMessagesLimit - subscription.chatMessagesUsed,
-        ),
-      },
-      aiNotes: {
-        used: subscription.aiNotesUsed,
-        limit: subscription.aiNotesLimit,
-        remaining: Math.max(
-          0,
-          subscription.aiNotesLimit - subscription.aiNotesUsed,
-        ),
-      },
-      documents: {
-        limit: subscription.documentsLimit,
-      },
-      storage: {
-        limit: subscription.storageLimitBytes,
-      },
-      features: {
-        semanticSearch: subscription.hasSemanticSearch,
-        vectorization: subscription.hasVectorization,
-        advancedModels: subscription.hasAdvancedModels,
-        exportNotes: subscription.hasExportNotes,
-        apiAccess: subscription.hasApiAccess,
-      },
-    };
-  }
-
   async getAvailablePlans() {
     const plans = await this.planRepository.find({
       where: { isActive: true },
       order: { price: 'ASC' },
     });
 
-    // Only structured limits: the frontend builds the translated plan copy from them.
-    return plans.map((plan) => ({
-      plan: plan.plan,
-      price: Number(plan.price),
-      isPopular: plan.isPopular,
-      limits: {
-        chatMessages: plan.chatMessagesLimit,
-        aiNotes: plan.aiNotesLimit,
-        documents: plan.documentsLimit,
-        storageBytes: Number(plan.storageLimitBytes),
-      },
-      features: {
-        semanticSearch: plan.hasSemanticSearch,
-        vectorization: plan.hasVectorization,
-        advancedModels: plan.hasAdvancedModels,
-        exportNotes: plan.hasExportNotes,
-        apiAccess: plan.hasApiAccess,
-      },
+    // Structured entitlements only: the frontend builds the translated plan copy from them.
+    return plans.map(({ plan, price, isPopular, entitlements }) => ({
+      plan,
+      price: Number(price),
+      isPopular,
+      entitlements,
     }));
   }
 }

@@ -1,18 +1,28 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { CreditUsage } from '../../typeorm/entities/CreditUsage.entity';
-import { CreditLedgerEntry } from '../../typeorm/entities/CreditLedgerEntry.entity';
+import {
+  CreditLedgerEntry,
+} from '../../typeorm/entities/CreditLedgerEntry.entity';
 import { ErrorCode } from '../../common/errors/error-codes';
 import { aiCallContext } from '../../ai/metering/ai-call-context';
-import type { StreamTextResult } from '../../ai/providers/ai-provider.interface';
+import type {
+  StreamTextResult,
+} from '../../ai/providers/ai-provider.interface';
 import { EntitlementsService } from '../entitlements.service';
-import { creditCost, UNLIMITED, type CreditRequest } from '../catalog';
+import {
+  creditCost,
+  UNLIMITED,
+  type CreditPeriod,
+  type CreditRequest,
+} from '../catalog';
 import { currentCreditWindow, type CreditWindow } from './credit-period';
 
 export interface CreditBalance {
   used: number;
   // UNLIMITED (-1) when the plan has no credit limit.
   limit: number;
+  period: CreditPeriod;
   resetsAt: Date;
 }
 
@@ -52,11 +62,11 @@ export class CreditsService {
   }
 
   async getBalance(userId: string): Promise<CreditBalance> {
-    const { limit, window } = await this.resolveWindow(userId);
+    const { limit, period, window } = await this.resolveWindow(userId);
     const row = await this.dataSource
       .getRepository(CreditUsage)
       .findOne({ where: { userId, periodKey: window.key } });
-    return { used: row?.used ?? 0, limit, resetsAt: window.resetsAt };
+    return { used: row?.used ?? 0, limit, period, resetsAt: window.resetsAt };
   }
 
   async reserve(userId: string, request: CreditRequest): Promise<CreditCharge> {
@@ -108,12 +118,14 @@ export class CreditsService {
 
   private async resolveWindow(
     userId: string,
-  ): Promise<{ limit: number; window: CreditWindow }> {
+  ): Promise<{ limit: number; period: CreditPeriod; window: CreditWindow }> {
     const { entitlements, billingPeriod } =
       await this.entitlementsService.getEffective(userId);
+    const { amount, period } = entitlements.credits;
     return {
-      limit: entitlements.credits.amount,
-      window: currentCreditWindow(entitlements.credits.period, billingPeriod),
+      limit: amount,
+      period,
+      window: currentCreditWindow(period, billingPeriod),
     };
   }
 

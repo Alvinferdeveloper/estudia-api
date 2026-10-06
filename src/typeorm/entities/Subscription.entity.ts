@@ -35,6 +35,7 @@ export class Subscription {
   })
   plan: SubscriptionPlan;
 
+  // False once renewals stop; the plan still applies until currentPeriodEnd.
   @Column('boolean', { default: true })
   isActive: boolean;
 
@@ -43,45 +44,6 @@ export class Subscription {
 
   @Column('timestamp', { name: 'currentPeriodEnd', nullable: true })
   currentPeriodEnd: Date;
-
-  @Column('integer', { name: 'chatMessagesUsed', default: 0 })
-  chatMessagesUsed: number;
-
-  @Column('integer', { name: 'chatMessagesLimit', default: 30 })
-  chatMessagesLimit: number;
-
-  @Column('integer', { name: 'aiNotesUsed', default: 0 })
-  aiNotesUsed: number;
-
-  @Column('integer', { name: 'aiNotesLimit', default: 20 })
-  aiNotesLimit: number;
-
-  @Column('integer', { name: 'documentsLimit', default: 3 })
-  documentsLimit: number;
-
-  @Column('bigint', { name: 'storageLimitBytes', default: 52428800 })
-  storageLimitBytes: number;
-
-  @Column('boolean', { name: 'hasSemanticSearch', default: false })
-  hasSemanticSearch: boolean;
-
-  @Column('boolean', { name: 'hasVectorization', default: false })
-  hasVectorization: boolean;
-
-  @Column('boolean', { name: 'hasAdvancedModels', default: false })
-  hasAdvancedModels: boolean;
-
-  @Column('boolean', { name: 'hasExportNotes', default: false })
-  hasExportNotes: boolean;
-
-  @Column('boolean', { name: 'hasApiAccess', default: false })
-  hasApiAccess: boolean;
-
-  @Column('text', { name: 'stripeCustomerId', nullable: true })
-  stripeCustomerId: string;
-
-  @Column('text', { name: 'stripeSubscriptionId', nullable: true })
-  stripeSubscriptionId: string;
 
   @Column('text', { name: 'paypalSubscriptionId', nullable: true })
   paypalSubscriptionId: string | null;

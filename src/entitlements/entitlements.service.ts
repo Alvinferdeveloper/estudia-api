@@ -7,7 +7,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Plan } from '../typeorm/entities/Plan.entity';
 import { SubscriptionPlan } from '../typeorm/entities/Subscription.entity';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import {
+  SubscriptionsService,
+  type EffectivePlan,
+} from '../subscriptions/subscriptions.service';
 import { ErrorCode } from '../common/errors/error-codes';
 import {
   isWithinLimit,
@@ -17,11 +20,8 @@ import {
   type PlanQuota,
 } from './catalog';
 
-export interface EffectiveEntitlements {
-  plan: SubscriptionPlan;
+export interface EffectiveEntitlements extends EffectivePlan {
   entitlements: PlanEntitlements;
-  // The paid billing period in force; null on the free plan.
-  billingPeriod: { start: Date; end: Date } | null;
 }
 
 @Injectable()
@@ -32,25 +32,11 @@ export class EntitlementsService {
     private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
-  // A paid plan applies until its period ends, even after cancelling; then the user is on free.
   async getEffective(userId: string): Promise<EffectiveEntitlements> {
-    const subscription =
-      await this.subscriptionsService.getOrCreateSubscription(userId);
-    const isPaidPeriodCurrent =
-      subscription.plan !== SubscriptionPlan.FREE &&
-      !!subscription.currentPeriodEnd &&
-      subscription.currentPeriodEnd > new Date();
-
-    const plan = isPaidPeriodCurrent ? subscription.plan : SubscriptionPlan.FREE;
+    const effective = await this.subscriptionsService.getEffectivePlan(userId);
     return {
-      plan,
-      entitlements: await this.getPlanEntitlements(plan),
-      billingPeriod: isPaidPeriodCurrent
-        ? {
-            start: subscription.currentPeriodStart,
-            end: subscription.currentPeriodEnd,
-          }
-        : null,
+      ...effective,
+      entitlements: await this.getPlanEntitlements(effective.plan),
     };
   }
 

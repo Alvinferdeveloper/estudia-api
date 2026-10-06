@@ -30,33 +30,6 @@ export class Plan {
   @Column('json', { nullable: true })
   entitlements: PlanEntitlements | null;
 
-  @Column('integer', { name: 'chatMessagesLimit', default: 0 })
-  chatMessagesLimit: number;
-
-  @Column('integer', { name: 'aiNotesLimit', default: 0 })
-  aiNotesLimit: number;
-
-  @Column('integer', { name: 'documentsLimit', default: 0 })
-  documentsLimit: number;
-
-  @Column('bigint', { name: 'storageLimitBytes', default: 0 })
-  storageLimitBytes: number;
-
-  @Column('boolean', { name: 'hasSemanticSearch', default: false })
-  hasSemanticSearch: boolean;
-
-  @Column('boolean', { name: 'hasVectorization', default: false })
-  hasVectorization: boolean;
-
-  @Column('boolean', { name: 'hasAdvancedModels', default: false })
-  hasAdvancedModels: boolean;
-
-  @Column('boolean', { name: 'hasExportNotes', default: false })
-  hasExportNotes: boolean;
-
-  @Column('boolean', { name: 'hasApiAccess', default: false })
-  hasApiAccess: boolean;
-
   @Column('boolean', { default: true })
   isActive: boolean;
 
