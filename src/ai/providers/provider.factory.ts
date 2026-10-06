@@ -1,7 +1,6 @@
 import type { AIProvider } from './ai-provider.interface';
 import { GoogleGeminiProvider } from './google-gemini.provider';
 
-export type { AIProvider } from './ai-provider.interface';
 
 export function createAIProvider(): AIProvider {
   const provider = process.env.AI_PROVIDER || 'google';

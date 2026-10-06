@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { convertToModelMessages } from 'ai';
 import type { ModelMessage } from 'ai';
 import { RagService } from '../rag/rag.service';
 import { DocumentsService } from '../documents/documents.service';
-import { createAIProvider } from './providers/provider.factory';
-import type { AIProvider } from './providers/provider.factory';
+import { AI_PROVIDER } from './providers/ai-provider.interface';
+import type { AIProvider } from './providers/ai-provider.interface';
 import { buildChatSystemPrompt, SearchResult } from './prompts/chat.prompts';
 import {
   buildGenerateQuestionsPrompt,
@@ -25,15 +25,13 @@ import { VocabularyExplanation } from '../typeorm/entities/VocabularyEntry.entit
 
 @Injectable()
 export class AIService {
-  private provider: AIProvider;
   private readonly logger = new Logger(AIService.name);
 
   constructor(
+    @Inject(AI_PROVIDER) private readonly provider: AIProvider,
     private ragService: RagService,
     private documentsService: DocumentsService,
-  ) {
-    this.provider = createAIProvider();
-  }
+  ) {}
 
   // ─── Chat with RAG ───────────────────────────────────────────────
 
@@ -90,11 +88,12 @@ export class AIService {
     );
     const modelMessages = await convertToModelMessages(rawMessages);
 
-    return this.provider.streamText({
+    const { stream } = await this.provider.streamText({
       feature: 'chat',
       systemPrompt,
       messages: modelMessages,
     });
+    return stream;
   }
 
   // ─── Exam ─────────────────────────────────────────────────────────
@@ -176,7 +175,7 @@ export class AIService {
       });
 
       try {
-        const text = await this.provider.generateText({
+        const { text } = await this.provider.generateText({
           feature: 'exam',
           systemPrompt: prompt,
         });
@@ -238,7 +237,7 @@ export class AIService {
     });
 
     try {
-      const text = await this.provider.generateText({
+      const { text } = await this.provider.generateText({
         feature: 'exam',
         systemPrompt: prompt,
       });
@@ -322,7 +321,7 @@ export class AIService {
     });
 
     try {
-      const text = await this.provider.generateText({
+      const { text } = await this.provider.generateText({
         feature: 'exam',
         systemPrompt: prompt,
       });
@@ -360,11 +359,12 @@ export class AIService {
       { role: 'user', content: userContent },
     ];
 
-    return this.provider.streamText({
+    const { stream } = await this.provider.streamText({
       feature: 'noteStream',
       systemPrompt: buildNoteSystemPrompt(data.responseLanguage),
       messages: modelMessages,
     });
+    return stream;
   }
 
   // ─── Vocabulary (Language Mode) ────────────────────────────────────
@@ -378,7 +378,7 @@ export class AIService {
   }): Promise<VocabularyExplanation> {
     const userPrompt = buildVocabularyUserPrompt(data);
 
-    const text = await this.provider.generateText({
+    const { text } = await this.provider.generateText({
       feature: 'vocabulary',
       systemPrompt: VOCABULARY_SYSTEM_PROMPT,
       userPrompt,

@@ -1,7 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { DocumentsService } from '../../documents/documents.service';
-import { createVisualQueryProvider } from '../providers/visual-query-provider.factory';
-import type { VisualQueryProvider } from '../providers/visual-query-provider.factory';
+import { AI_PROVIDER } from '../providers/ai-provider.interface';
+import type { AIProvider } from '../providers/ai-provider.interface';
 import 'dotenv/config';
 import { responseLanguageInstruction } from '../language';
 import { ErrorCode } from '../../common/errors/error-codes';
@@ -25,11 +25,11 @@ interface ExtractImageResponse {
 export class VisualQueryService {
   private readonly parserUrl =
     process.env.PARSER_SERVICE_URL || 'http://localhost:8000';
-  private readonly provider: VisualQueryProvider;
 
-  constructor(private readonly documentsService: DocumentsService) {
-    this.provider = createVisualQueryProvider();
-  }
+  constructor(
+    @Inject(AI_PROVIDER) private readonly provider: AIProvider,
+    private readonly documentsService: DocumentsService,
+  ) {}
 
   async answer(params: VisualQueryParams): Promise<string> {
     const {
@@ -89,14 +89,22 @@ export class VisualQueryService {
     // TODO: no se persiste la pregunta/respuesta en este MVP (interacción
     // efímera). Si más adelante se quiere analytics o cachear preguntas
     // repetidas sobre la misma imagen (documentId + xref), loguear acá.
-    return this.provider.explainImage({
-      imageBase64,
-      mimeType,
-      question,
-      instructions: responseLanguageInstruction(
+    const { text } = await this.provider.generateText({
+      feature: 'visualQuery',
+      systemPrompt: responseLanguageInstruction(
         'userMessage',
         responseLanguage,
       ),
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: question },
+            { type: 'image', image: imageBase64, mediaType: mimeType },
+          ],
+        },
+      ],
     });
+    return text;
   }
 }

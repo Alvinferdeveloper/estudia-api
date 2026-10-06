@@ -8,23 +8,41 @@ import {
   toTextStream,
   createTextStreamResponse,
 } from 'ai';
-import type { ModelMessage } from 'ai';
+import type { LanguageModelUsage, ModelMessage } from 'ai';
 import { Logger } from '@nestjs/common';
 import type {
   AIProvider,
   AIFeature,
+  AIUsage,
   GenerateTextOptions,
+  GenerateTextResult,
   StreamTextOptions,
+  StreamTextResult,
 } from './ai-provider.interface';
 import { AIProviderException } from './ai-provider.exception';
 import { ErrorCode } from '../../common/errors/error-codes';
 
-const MODELS: Record<AIFeature, string> = {
-  chat: 'gemini-2.5-flash',
-  exam: 'gemini-2.5-flash',
-  noteStream: 'gemini-2.5-flash-lite',
-  vocabulary: 'gemini-2.5-flash',
+interface FeatureModel {
+  model: string;
+  // Caps the cost of a single call. On Gemini 2.5 it also covers thinking tokens, hence the headroom.
+  maxOutputTokens: number;
+}
+
+const FEATURE_MODELS: Record<AIFeature, FeatureModel> = {
+  chat: { model: 'gemini-2.5-flash', maxOutputTokens: 8192 },
+  exam: { model: 'gemini-2.5-flash', maxOutputTokens: 16384 },
+  noteStream: { model: 'gemini-2.5-flash-lite', maxOutputTokens: 4096 },
+  vocabulary: { model: 'gemini-2.5-flash', maxOutputTokens: 4096 },
+  // Higher-quality, vision-capable tier for user-facing image explanations.
+  visualQuery: { model: 'gemini-2.5-pro', maxOutputTokens: 8192 },
 };
+
+const toUsage = (model: string, usage: LanguageModelUsage): AIUsage => ({
+  model,
+  inputTokens: usage.inputTokens ?? 0,
+  outputTokens: usage.outputTokens ?? 0,
+  reasoningTokens: usage.outputTokenDetails?.reasoningTokens ?? 0,
+});
 
 export class GoogleGeminiProvider implements AIProvider {
   private readonly logger = new Logger(GoogleGeminiProvider.name);
@@ -39,19 +57,21 @@ export class GoogleGeminiProvider implements AIProvider {
     systemPrompt,
     messages,
     userPrompt,
-  }: GenerateTextOptions): Promise<string> {
+  }: GenerateTextOptions): Promise<GenerateTextResult> {
+    const { model, maxOutputTokens } = FEATURE_MODELS[feature];
     const modelMessages: ModelMessage[] = messages?.length
       ? messages
       : [{ role: 'user', content: userPrompt || '' }];
 
     try {
       const result = await generateText({
-        model: this.client(MODELS[feature]),
+        model: this.client(model),
         system: systemPrompt,
         messages: modelMessages,
+        maxOutputTokens,
       });
 
-      return result.text;
+      return { text: result.text, usage: toUsage(model, result.totalUsage) };
     } catch (error) {
       this.logger.error(
         `generateText failed for feature '${feature}':`,
@@ -70,12 +90,15 @@ export class GoogleGeminiProvider implements AIProvider {
     feature,
     systemPrompt,
     messages,
-  }: StreamTextOptions): Promise<ReadableStream> {
+  }: StreamTextOptions): Promise<StreamTextResult> {
+    const { model, maxOutputTokens } = FEATURE_MODELS[feature];
+
     try {
       const result = streamText({
-        model: this.client(MODELS[feature]),
+        model: this.client(model),
         system: systemPrompt,
         messages,
+        maxOutputTokens,
         // Gemini emits large, uneven chunks; re-pace them word by word so the text reads as it's written.
         experimental_transform: smoothStream({ delayInMs: 15, chunking: 'word' }),
       });
@@ -93,7 +116,12 @@ export class GoogleGeminiProvider implements AIProvider {
               stream: toTextStream({ stream: result.stream }),
             });
 
-      return response.body!;
+      const usage = Promise.resolve(result.totalUsage).then(
+        (total) => toUsage(model, total),
+        () => null,
+      );
+
+      return { stream: response.body!, usage };
     } catch (error) {
       this.logger.error(
         `streamText failed for feature '${feature}':`,
