@@ -34,6 +34,7 @@ import { DocumentImage } from './typeorm/entities/DocumentImage.entity';
 import { VocabularyModule } from './vocabulary/vocabulary.module';
 import { VocabularyEntry } from './typeorm/entities/VocabularyEntry.entity';
 import { TranslateModule } from './translate/translate.module';
+import { AICallLog } from './typeorm/entities/AICallLog.entity';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { TranslateModule } from './translate/translate.module';
         Conversation,
         DocumentImage,
         VocabularyEntry,
+        AICallLog,
       ],
       synchronize: true,
       timezone: 'Z',
