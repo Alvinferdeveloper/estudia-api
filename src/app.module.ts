@@ -35,6 +35,7 @@ import { VocabularyModule } from './vocabulary/vocabulary.module';
 import { VocabularyEntry } from './typeorm/entities/VocabularyEntry.entity';
 import { TranslateModule } from './translate/translate.module';
 import { AICallLog } from './typeorm/entities/AICallLog.entity';
+import { EntitlementsModule } from './entitlements/entitlements.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { AICallLog } from './typeorm/entities/AICallLog.entity';
     FoldersModule,
     RagModule,
     SubscriptionsModule,
+    EntitlementsModule,
     PaymentsModule,
     ExamModule,
     AIModule,

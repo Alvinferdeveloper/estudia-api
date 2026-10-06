@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { SubscriptionPlan } from './Subscription.entity';
+import type { PlanEntitlements } from '../../entitlements/catalog';
 
 @Entity('plan')
 export class Plan {
@@ -24,6 +25,10 @@ export class Plan {
 
   @Column('boolean', { default: false })
   isPopular: boolean;
+
+  // Everything the plan grants; editing this row changes every subscriber's limits at once.
+  @Column('json', { nullable: true })
+  entitlements: PlanEntitlements | null;
 
   @Column('integer', { name: 'chatMessagesLimit', default: 0 })
   chatMessagesLimit: number;
