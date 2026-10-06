@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
-import { SubscriptionPlan } from '../typeorm/entities/Subscription.entity';
 
+// Read-only: plans change only through verified payments (PaymentsService).
 @Controller('subscriptions')
 @UseGuards(AuthGuard)
 export class SubscriptionsController {
@@ -25,43 +25,5 @@ export class SubscriptionsController {
   @Get('usage')
   async getUsage(@CurrentUserId() userId: string) {
     return this.subscriptionsService.getUsageStats(userId);
-  }
-
-  @Get('can-chat')
-  async canChat(@CurrentUserId() userId: string) {
-    const canUse = await this.subscriptionsService.canUseChat(userId);
-    return { canUse };
-  }
-
-  @Get('can-ai-note')
-  async canAiNote(@CurrentUserId() userId: string) {
-    const canUse = await this.subscriptionsService.canUseAiNote(userId);
-    return { canUse };
-  }
-
-  @Post('increment-chat')
-  async incrementChat(@CurrentUserId() userId: string) {
-    await this.subscriptionsService.incrementChatUsage(userId);
-    return { success: true };
-  }
-
-  @Post('increment-ai-note')
-  async incrementAiNote(@CurrentUserId() userId: string) {
-    await this.subscriptionsService.incrementAiNoteUsage(userId);
-    return { success: true };
-  }
-
-  @Post('update-plan')
-  async updatePlan(
-    @CurrentUserId() userId: string,
-    @Body() body: { plan: SubscriptionPlan },
-  ) {
-    return this.subscriptionsService.updatePlan(userId, body.plan);
-  }
-
-  @Post('reset-usage')
-  async resetUsage(@CurrentUserId() userId: string) {
-    await this.subscriptionsService.resetUsage(userId);
-    return { success: true };
   }
 }

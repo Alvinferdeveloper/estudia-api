@@ -154,16 +154,6 @@ export class SubscriptionsService {
     };
   }
 
-  async resetUsage(userId: string): Promise<void> {
-    await this.subscriptionRepository.update(
-      { userId },
-      {
-        chatMessagesUsed: 0,
-        aiNotesUsed: 0,
-      },
-    );
-  }
-
   async getAvailablePlans() {
     const plans = await this.planRepository.find({
       where: { isActive: true },
