@@ -6,6 +6,7 @@ export const CREDIT_COSTS = {
   'chat.message': () => 1,
   'note.generate': () => 1,
   'vocabulary.explain': () => 1,
+  // Mirrored in estudia-front's subscription/lib/entitlements.ts to show the price before generating.
   'exam.generate': ({ questions }: { questions: number }) =>
     Math.ceil(questions / 5),
   // Uses the pro vision model, the most expensive call.
