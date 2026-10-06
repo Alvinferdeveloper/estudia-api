@@ -1,15 +1,9 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ModelMessage } from 'ai';
 import { RagService } from '../../rag/rag.service';
 import { DocumentsService } from '../../documents/documents.service';
 import { MessagesService } from '../../messages/messages.service';
 import type { Message } from '../../typeorm/entities/Message.entity';
-import { ErrorCode } from '../../common/errors/error-codes';
 import { AI_PROVIDER } from '../providers/ai-provider.interface';
 import type {
   AIProvider,
@@ -23,8 +17,7 @@ const RAG_CHUNKS = 3;
 
 export interface ChatReplyRequest {
   conversationId: string;
-  // Omitted to answer the last saved user message again (retry).
-  message?: string;
+  message: string;
   responseLanguage?: string;
 }
 
@@ -70,29 +63,20 @@ export class ChatService {
       userId,
     );
 
-    if (message) {
-      await this.messagesService.appendMessage(conversation, 'user', message);
-    }
-
-    const history = fitHistory(
-      await this.messagesService.getRecentMessages(
-        conversation.id,
-        HISTORY_BUDGET.maxMessages,
-      ),
+    const recent = await this.messagesService.getRecentMessages(
+      conversation.id,
+      HISTORY_BUDGET.maxMessages,
     );
-    const question = history.findLast((m) => m.role === 'user')?.content;
-    if (!question) {
-      throw new BadRequestException({
-        code: ErrorCode.INVALID_REQUEST,
-        message: 'Nothing to reply to',
-      });
+    // A retry resends the same unanswered message; store it only once.
+    const last = recent.at(-1);
+    if (last?.role !== 'user' || last.content !== message) {
+      recent.push(
+        await this.messagesService.appendMessage(conversation, 'user', message),
+      );
     }
+    const history = fitHistory(recent.slice(-HISTORY_BUDGET.maxMessages));
 
-    const chunks = await this.findRelevantChunks(
-      document.id,
-      userId,
-      question,
-    );
+    const chunks = await this.findRelevantChunks(document.id, userId, message);
     const result = await this.provider.streamText({
       feature: 'chat',
       systemPrompt: buildChatSystemPrompt(

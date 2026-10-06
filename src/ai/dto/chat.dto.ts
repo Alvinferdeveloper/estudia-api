@@ -1,16 +1,16 @@
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
 import { IsResponseLanguage } from '../language';
 
-// The server keeps the conversation history; the client only sends the new message.
+// The server keeps the conversation history; the client only sends the message to answer.
 export class ChatDto {
   @IsUUID()
   conversationId: string;
 
-  // Omitted to retry the last message.
-  @IsOptional()
+  // Resending the last unanswered message retries it without storing it twice.
   @IsString()
+  @IsNotEmpty()
   @MaxLength(4000)
-  message?: string;
+  message: string;
 
   @IsResponseLanguage()
   responseLanguage?: string;
