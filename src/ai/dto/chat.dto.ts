@@ -12,8 +12,10 @@ export class UIMessagePartDto {
   @IsString()
   type: string;
 
+  // Only text parts carry text; the AI SDK also sends parts like step-start.
+  @IsOptional()
   @IsString()
-  text: string;
+  text?: string;
 }
 
 export class UIMessageDto {

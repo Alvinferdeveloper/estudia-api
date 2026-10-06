@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { dataSource } from './data-source';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -13,6 +13,8 @@ async function bootstrap() {
 
   app.useLogger(new Logger());
   app.useGlobalFilters(new AllExceptionsFilter());
+  // Without it the DTO decorators are inert; whitelist drops fields a DTO doesn't declare.
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const requestLogger = new RequestLoggerMiddleware();
   app.use(requestLogger.use.bind(requestLogger));
