@@ -84,7 +84,7 @@ export class Subscription {
   stripeSubscriptionId: string;
 
   @Column('text', { name: 'paypalSubscriptionId', nullable: true })
-  paypalSubscriptionId: string;
+  paypalSubscriptionId: string | null;
 
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;

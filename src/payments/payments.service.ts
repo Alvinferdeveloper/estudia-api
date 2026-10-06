@@ -12,7 +12,6 @@ import {
   PaymentStatus,
   SubscriptionPlan,
 } from '../typeorm/entities/Payment.entity';
-import { Subscription } from '../typeorm/entities/Subscription.entity';
 import { PayPalClient } from './lib/paypal-client';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { ErrorCode } from '../common/errors/error-codes';
@@ -36,8 +35,6 @@ export class PaymentsService {
   constructor(
     @InjectRepository(Payment)
     private paymentRepository: Repository<Payment>,
-    @InjectRepository(Subscription)
-    private subscriptionRepository: Repository<Subscription>,
     private payPalClient: PayPalClient,
     private subscriptionsService: SubscriptionsService,
   ) {}
@@ -468,6 +465,7 @@ export class PaymentsService {
         status: PaymentStatus.REFUNDED,
         eventId: refundId,
       });
+      await this.subscriptionsService.endPaidPeriod(payment.userId);
       this.logger.log(`Payment ${payment.id} refunded`);
     }
   }
@@ -493,6 +491,7 @@ export class PaymentsService {
         failureReason: 'Payment reversed/charged back',
         eventId: resource.id as string,
       });
+      await this.subscriptionsService.endPaidPeriod(payment.userId);
       this.logger.log(`Payment ${payment.id} reversed`);
     }
   }
@@ -501,31 +500,25 @@ export class PaymentsService {
     resource: Record<string, unknown>,
   ): Promise<void> {
     const subscriptionId = resource.id as string;
-    const planId = resource.plan_id as string;
-    const customId = resource.custom_id as string; // User ID passed during creation
-
-    if (!customId) {
+    const userId = resource.custom_id as string; // Set when the subscription was created
+    if (!userId) {
       this.logger.error(
-        `No custom_id (userId) found in subscription ${subscriptionId}`,
+        `No custom_id (userId) in subscription ${subscriptionId}`,
       );
       return;
     }
 
-    // Map PayPal Plan ID to our local plan (you should define this mapping)
-    // For now, we'll try to find a payment or just update the user's subscription
-    const plan = this.mapPayPalPlanToLocal(planId);
+    const plan = this.mapPayPalPlanToLocal(resource.plan_id as string);
+    if (!plan) {
+      this.logger.error(
+        `Unknown PayPal plan ${String(resource.plan_id)} for subscription ${subscriptionId}`,
+      );
+      return;
+    }
 
-    await this.subscriptionRepository.update(
-      { userId: customId },
-      {
-        paypalSubscriptionId: subscriptionId,
-        isActive: true,
-      },
-    );
-
-    await this.activateSubscription(customId, plan);
+    await this.subscriptionsService.activatePlan(userId, plan, subscriptionId);
     this.logger.log(
-      `Subscription ${subscriptionId} activated for user ${customId}`,
+      `Subscription ${subscriptionId} activated for user ${userId}`,
     );
   }
 
@@ -534,40 +527,28 @@ export class PaymentsService {
   ): Promise<void> {
     const subscriptionId = resource.billing_agreement_id as string;
     const amountObj = resource.amount as any;
-    const amount = parseFloat(amountObj?.value || '0');
-    const currency = amountObj?.currency_code || 'USD';
     const transactionId = resource.id as string;
 
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { paypalSubscriptionId: subscriptionId },
-    });
-
+    const subscription = await this.subscriptionsService.renewPeriod(
+      subscriptionId,
+    );
     if (!subscription) {
       this.logger.error(`Subscription not found for ID: ${subscriptionId}`);
       return;
     }
 
-    const payment = this.paymentRepository.create({
-      userId: subscription.userId,
-      plan: subscription.plan,
-      amount,
-      currency,
-      paypalSubscriptionId: subscriptionId,
-      paypalCaptureId: transactionId,
-      status: PaymentStatus.COMPLETED,
-      completedAt: new Date(),
-    });
-
-    await this.paymentRepository.save(payment);
-
-    // Extend the period (assuming 30 days)
-    const nextEnd = new Date();
-    nextEnd.setDate(nextEnd.getDate() + 30);
-
-    await this.subscriptionRepository.update(subscription.id, {
-      isActive: true,
-      currentPeriodEnd: nextEnd,
-    });
+    await this.paymentRepository.save(
+      this.paymentRepository.create({
+        userId: subscription.userId,
+        plan: subscription.plan,
+        amount: parseFloat(amountObj?.value || '0'),
+        currency: amountObj?.currency_code || 'USD',
+        paypalSubscriptionId: subscriptionId,
+        paypalCaptureId: transactionId,
+        status: PaymentStatus.COMPLETED,
+        completedAt: new Date(),
+      }),
+    );
 
     this.logger.log(
       `Recurring payment ${transactionId} processed for user ${subscription.userId}`,
@@ -578,29 +559,19 @@ export class PaymentsService {
     resource: Record<string, unknown>,
   ): Promise<void> {
     const subscriptionId = resource.id as string;
-
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { paypalSubscriptionId: subscriptionId },
-    });
+    const subscription =
+      await this.subscriptionsService.findByPayPalId(subscriptionId);
 
     if (subscription) {
-      await this.subscriptionRepository.update(subscription.id, {
-        isActive: false,
-        paypalSubscriptionId: null as any,
-      });
-
-      // Optionally Downgrade to FREE immediately or wait until period end
-      // For now, just mark inactive
+      await this.subscriptionsService.cancelRenewal(subscription);
       this.logger.log(`Subscription ${subscriptionId} cancelled`);
     }
   }
 
   async cancelUserSubscription(userId: string): Promise<void> {
-    const subscription = await this.subscriptionRepository.findOne({
-      where: { userId },
-    });
+    const subscription = await this.subscriptionsService.findByUserId(userId);
 
-    if (!subscription || !subscription.paypalSubscriptionId) {
+    if (!subscription?.paypalSubscriptionId) {
       throw new BadRequestException({ code: ErrorCode.NO_ACTIVE_SUBSCRIPTION });
     }
 
@@ -608,16 +579,11 @@ export class PaymentsService {
       subscription.paypalSubscriptionId,
       'User requested cancellation via app',
     );
-
-    // Update local DB
-    await this.subscriptionRepository.update(subscription.id, {
-      isActive: false,
-      paypalSubscriptionId: null as any,
-    });
+    await this.subscriptionsService.cancelRenewal(subscription);
   }
 
-  private mapPayPalPlanToLocal(paypalPlanId: string): SubscriptionPlan {
-    // This should be configurable via env variables
+  // Null for an id that isn't configured, so a misconfigured plan never grants a paid one by default.
+  private mapPayPalPlanToLocal(paypalPlanId: string): SubscriptionPlan | null {
     const planMapping: Record<string, SubscriptionPlan> = {
       [process.env.PAYPAL_PLAN_BASIC_ID || '']: SubscriptionPlan.BASIC,
       [process.env.PAYPAL_PLAN_PRO_ID || '']: SubscriptionPlan.PRO,
@@ -625,7 +591,7 @@ export class PaymentsService {
         SubscriptionPlan.ENTERPRISE,
     };
 
-    return planMapping[paypalPlanId] || SubscriptionPlan.BASIC;
+    return (paypalPlanId && planMapping[paypalPlanId]) || null;
   }
 
   async getPaymentById(paymentId: string, userId: string): Promise<Payment> {
@@ -651,10 +617,7 @@ export class PaymentsService {
     userId: string,
     plan: SubscriptionPlan,
   ): Promise<void> {
-    const limits = await this.subscriptionsService.getPlanLimits(plan);
-
-    await this.subscriptionsService.updatePlan(userId, plan, limits);
-
+    await this.subscriptionsService.activatePlan(userId, plan);
     this.logger.log(`Subscription activated for user ${userId}, plan ${plan}`);
   }
 

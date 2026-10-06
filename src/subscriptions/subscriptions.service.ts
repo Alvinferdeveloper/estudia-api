@@ -8,6 +8,12 @@ import {
 import { Plan } from '../typeorm/entities/Plan.entity';
 import { ErrorCode } from '../common/errors/error-codes';
 
+const nextBillingPeriod = (start = new Date()) => {
+  const end = new Date(start);
+  end.setUTCMonth(end.getUTCMonth() + 1);
+  return { currentPeriodStart: start, currentPeriodEnd: end };
+};
+
 @Injectable()
 export class SubscriptionsService {
   constructor(
@@ -57,63 +63,56 @@ export class SubscriptionsService {
     return subscription;
   }
 
-  async canUseChat(userId: string): Promise<boolean> {
-    const subscription = await this.getOrCreateSubscription(userId);
-    return subscription.chatMessagesUsed < subscription.chatMessagesLimit;
-  }
-
-  async canUseAiNote(userId: string): Promise<boolean> {
-    const subscription = await this.getOrCreateSubscription(userId);
-    return subscription.aiNotesUsed < subscription.aiNotesLimit;
-  }
-
-  async incrementChatUsage(userId: string): Promise<void> {
-    await this.subscriptionRepository.increment(
-      { userId },
-      'chatMessagesUsed',
-      1,
-    );
-  }
-
-  async incrementAiNoteUsage(userId: string): Promise<void> {
-    await this.subscriptionRepository.increment({ userId }, 'aiNotesUsed', 1);
-  }
-
-  async updatePlan(
+  // Opens a paid billing period. What the plan grants is read from its row, never copied here.
+  async activatePlan(
     userId: string,
     plan: SubscriptionPlan,
-    limits?: {
-      chatMessagesLimit: number;
-      aiNotesLimit: number;
-      documentsLimit: number;
-      storageLimitBytes: number;
-      hasSemanticSearch: boolean;
-      hasVectorization: boolean;
-      hasAdvancedModels: boolean;
-      hasExportNotes: boolean;
-      hasApiAccess: boolean;
-    },
+    paypalSubscriptionId?: string,
   ): Promise<Subscription> {
-    const planLimits = limits || (await this.getPlanLimits(plan));
     const subscription = await this.getOrCreateSubscription(userId);
-
-    subscription.plan = plan;
-    subscription.isActive = true;
-    subscription.currentPeriodStart = new Date();
-    subscription.currentPeriodEnd = new Date(
-      Date.now() + 30 * 24 * 60 * 60 * 1000,
-    );
-    subscription.chatMessagesLimit = planLimits.chatMessagesLimit;
-    subscription.aiNotesLimit = planLimits.aiNotesLimit;
-    subscription.documentsLimit = planLimits.documentsLimit;
-    subscription.storageLimitBytes = planLimits.storageLimitBytes;
-    subscription.hasSemanticSearch = planLimits.hasSemanticSearch;
-    subscription.hasVectorization = planLimits.hasVectorization;
-    subscription.hasAdvancedModels = planLimits.hasAdvancedModels;
-    subscription.hasExportNotes = planLimits.hasExportNotes;
-    subscription.hasApiAccess = planLimits.hasApiAccess;
-
+    Object.assign(subscription, {
+      plan,
+      isActive: true,
+      ...nextBillingPeriod(),
+      ...(paypalSubscriptionId && { paypalSubscriptionId }),
+    });
     return this.subscriptionRepository.save(subscription);
+  }
+
+  // A renewal payment opens the next period, which also starts a new monthly credit window.
+  async renewPeriod(
+    paypalSubscriptionId: string,
+  ): Promise<Subscription | null> {
+    const subscription = await this.findByPayPalId(paypalSubscriptionId);
+    if (!subscription) return null;
+    Object.assign(subscription, { isActive: true, ...nextBillingPeriod() });
+    return this.subscriptionRepository.save(subscription);
+  }
+
+  // Stops renewals; the plan stays in force until the paid period ends.
+  async cancelRenewal(subscription: Subscription): Promise<void> {
+    await this.subscriptionRepository.update(subscription.id, {
+      isActive: false,
+      paypalSubscriptionId: null,
+    });
+  }
+
+  // A refunded or reversed payment ends the paid period right away.
+  async endPaidPeriod(userId: string): Promise<void> {
+    await this.subscriptionRepository.update(
+      { userId },
+      { isActive: false, currentPeriodEnd: new Date() },
+    );
+  }
+
+  findByPayPalId(paypalSubscriptionId: string): Promise<Subscription | null> {
+    return this.subscriptionRepository.findOne({
+      where: { paypalSubscriptionId },
+    });
+  }
+
+  findByUserId(userId: string): Promise<Subscription | null> {
+    return this.subscriptionRepository.findOne({ where: { userId } });
   }
 
   async getUsageStats(userId: string) {
@@ -179,30 +178,5 @@ export class SubscriptionsService {
         apiAccess: plan.hasApiAccess,
       },
     }));
-  }
-
-  async getPlanLimits(plan: SubscriptionPlan) {
-    const planData = await this.planRepository.findOne({
-      where: { plan, isActive: true },
-    });
-
-    if (!planData) {
-      throw new NotFoundException({
-        code: ErrorCode.PLAN_NOT_FOUND,
-        message: `Plan ${plan} not found`,
-      });
-    }
-
-    return {
-      chatMessagesLimit: planData.chatMessagesLimit,
-      aiNotesLimit: planData.aiNotesLimit,
-      documentsLimit: planData.documentsLimit,
-      storageLimitBytes: Number(planData.storageLimitBytes),
-      hasSemanticSearch: planData.hasSemanticSearch,
-      hasVectorization: planData.hasVectorization,
-      hasAdvancedModels: planData.hasAdvancedModels,
-      hasExportNotes: planData.hasExportNotes,
-      hasApiAccess: planData.hasApiAccess,
-    };
   }
 }
