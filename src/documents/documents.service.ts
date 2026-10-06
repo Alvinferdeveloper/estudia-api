@@ -14,6 +14,7 @@ import { DocumentIngestionService } from './document-ingestion.service';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 import { ErrorCode } from '../common/errors/error-codes';
+import type { PlanQuota } from '../entitlements/catalog';
 
 export interface FolderItem {
   id: string;
@@ -285,6 +286,17 @@ export class DocumentsService {
       page,
       limit,
     };
+  }
+
+  // What the user currently stores, keyed like the plan quotas.
+  async getStorageUsage(userId: string): Promise<Record<PlanQuota, number>> {
+    const { documents, storageBytes } = await this.documentsRepository
+      .createQueryBuilder('document')
+      .select('COUNT(*)', 'documents')
+      .addSelect('COALESCE(SUM(document.fileSize), 0)', 'storageBytes')
+      .where('document.userId = :userId', { userId })
+      .getRawOne();
+    return { documents: Number(documents), storageBytes: Number(storageBytes) };
   }
 
   async findOneDocument(

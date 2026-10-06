@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { AnnotationsService } from './annotations.service';
+import { RequireFeature } from '../entitlements/require-feature.decorator';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
 
@@ -117,6 +118,7 @@ export class AnnotationsController {
   }
 
   @Get('documents/:documentId/annotations/export')
+  @RequireFeature('exportNotes')
   async export(
     @Param('documentId', ParseUUIDPipe) documentId: string,
     @Query('format')

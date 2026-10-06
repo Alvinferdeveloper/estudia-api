@@ -7,9 +7,13 @@ import { Document } from '../typeorm/entities/Document.entity';
 import { Folder } from '../typeorm/entities/Folder.entity';
 import { User } from '../typeorm/entities/User.entity';
 import { DocumentImage } from '../typeorm/entities/DocumentImage.entity';
+import { EntitlementsModule } from '../entitlements/entitlements.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Document, Folder, User, DocumentImage])],
+  imports: [
+    TypeOrmModule.forFeature([Document, Folder, User, DocumentImage]),
+    EntitlementsModule,
+  ],
   controllers: [DocumentsController],
   providers: [DocumentsService, DocumentIngestionService],
   exports: [DocumentsService],

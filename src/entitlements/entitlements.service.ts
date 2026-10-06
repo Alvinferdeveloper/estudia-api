@@ -87,19 +87,21 @@ export class EntitlementsService {
     }
   }
 
-  // `nextValue` is the usage the action would reach, e.g. current documents + 1.
-  async assertQuota(
+  // `next` holds the usage the action would reach, e.g. current documents + 1.
+  async assertQuotas(
     userId: string,
-    quota: PlanQuota,
-    nextValue: number,
+    next: Partial<Record<PlanQuota, number>>,
   ): Promise<void> {
     const { entitlements } = await this.getEffective(userId);
-    const limit = entitlements.quotas[quota];
-    if (!isWithinLimit(limit, nextValue)) {
-      throw new ForbiddenException({
-        code: ErrorCode.QUOTA_EXCEEDED,
-        params: { quota, limit },
-      });
+    const entries = Object.entries(next) as [PlanQuota, number][];
+    for (const [quota, value] of entries) {
+      const limit = entitlements.quotas[quota];
+      if (!isWithinLimit(limit, value)) {
+        throw new ForbiddenException({
+          code: ErrorCode.QUOTA_EXCEEDED,
+          params: { quota, limit },
+        });
+      }
     }
   }
 }

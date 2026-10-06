@@ -17,11 +17,15 @@ import { DocumentsService } from './documents.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
 import { ErrorCode } from '../common/errors/error-codes';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 
 @Controller('documents')
 @UseGuards(AuthGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly entitlementsService: EntitlementsService,
+  ) {}
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -39,6 +43,12 @@ export class DocumentsController {
     if (file.mimetype !== 'application/pdf') {
       throw new BadRequestException({ code: ErrorCode.ONLY_PDF_ALLOWED });
     }
+
+    const usage = await this.documentsService.getStorageUsage(userId);
+    await this.entitlementsService.assertQuotas(userId, {
+      documents: usage.documents + 1,
+      storageBytes: usage.storageBytes + file.size,
+    });
 
     return this.documentsService.uploadDocument(
       file,
