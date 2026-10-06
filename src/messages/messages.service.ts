@@ -55,7 +55,7 @@ export class MessagesService {
     userId: string,
     title: string,
   ): Promise<Conversation> {
-    const conversation = await this.findOwnedConversation(
+    const conversation = await this.getOwnedConversation(
       conversationId,
       userId,
     );
@@ -67,7 +67,7 @@ export class MessagesService {
     conversationId: string,
     userId: string,
   ): Promise<void> {
-    const conversation = await this.findOwnedConversation(
+    const conversation = await this.getOwnedConversation(
       conversationId,
       userId,
     );
@@ -88,69 +88,44 @@ export class MessagesService {
     });
   }
 
-  async createMessage(
-    documentId: string,
-    conversationId: string,
-    userId: string,
-    createMessageDto: { role: 'user' | 'assistant'; content: string },
+  // Appends to a conversation the caller already owns (see getOwnedConversation).
+  async appendMessage(
+    conversation: Conversation,
+    role: Message['role'],
+    content: string,
   ): Promise<Message> {
-    const conversation = await this.verifyConversationAccess(
-      conversationId,
-      documentId,
-      userId,
-    );
-
-    const message = this.messagesRepository.create({
-      role: createMessageDto.role,
-      content: createMessageDto.content,
-      documentId,
-      conversationId,
-    });
-
     const update: Partial<Conversation> = { updatedAt: new Date() };
 
-    if (
-      createMessageDto.role === 'user' &&
-      conversation.title === DEFAULT_TITLE
-    ) {
+    if (role === 'user' && conversation.title === DEFAULT_TITLE) {
       const count = await this.messagesRepository.count({
-        where: { conversationId },
+        where: { conversationId: conversation.id },
       });
-      if (count === 0) {
-        update.title = this.deriveTitle(createMessageDto.content);
-      }
+      if (count === 0) update.title = this.deriveTitle(content);
     }
 
-    const saved = await this.messagesRepository.save(message);
-    await this.conversationsRepository.update(conversationId, update);
+    const saved = await this.messagesRepository.save(
+      this.messagesRepository.create({
+        role,
+        content,
+        documentId: conversation.documentId,
+        conversationId: conversation.id,
+      }),
+    );
+    await this.conversationsRepository.update(conversation.id, update);
     return saved;
   }
 
-  // ─── Legacy (single flat chat, kept for compatibility) ─────────
-
-  async getMessagesByDocument(
-    documentId: string,
-    userId: string,
+  // Oldest first, as a model expects them.
+  async getRecentMessages(
+    conversationId: string,
+    limit: number,
   ): Promise<Message[]> {
-    await this.verifyDocumentAccess(documentId, userId);
-    return this.messagesRepository.find({
-      where: { documentId },
-      order: { createdAt: 'ASC' },
+    const latest = await this.messagesRepository.find({
+      where: { conversationId },
+      order: { createdAt: 'DESC' },
+      take: limit,
     });
-  }
-
-  async createMessageByDocument(
-    documentId: string,
-    userId: string,
-    createMessageDto: { role: 'user' | 'assistant'; content: string },
-  ): Promise<Message> {
-    await this.verifyDocumentAccess(documentId, userId);
-    const newMessage = this.messagesRepository.create({
-      role: createMessageDto.role,
-      content: createMessageDto.content,
-      documentId,
-    });
-    return this.messagesRepository.save(newMessage);
+    return latest.reverse();
   }
 
   // ─── Helpers ───────────────────────────────────────────────────
@@ -161,7 +136,7 @@ export class MessagesService {
     return clean.slice(0, 50).trimEnd() + '…';
   }
 
-  private async findOwnedConversation(
+  async getOwnedConversation(
     conversationId: string,
     userId: string,
   ): Promise<Conversation> {
@@ -179,7 +154,7 @@ export class MessagesService {
     documentId: string,
     userId: string,
   ): Promise<Conversation> {
-    const conversation = await this.findOwnedConversation(
+    const conversation = await this.getOwnedConversation(
       conversationId,
       userId,
     );

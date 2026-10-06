@@ -8,22 +8,16 @@ import {
   Param,
   ParseUUIDPipe,
   UseGuards,
-  ForbiddenException,
   Query,
 } from '@nestjs/common';
 import { AnnotationsService } from './annotations.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller()
 @UseGuards(AuthGuard)
 export class AnnotationsController {
-  constructor(
-    private readonly annotationsService: AnnotationsService,
-    private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private readonly annotationsService: AnnotationsService) {}
 
   @Get('documents/:documentId/annotations')
   async findByDocument(
@@ -74,16 +68,6 @@ export class AnnotationsController {
       embedding?: string;
     },
   ) {
-    if (createAnnotationDto.aiResponse) {
-      const canUse = await this.subscriptionsService.canUseAiNote(userId);
-      if (!canUse) {
-        throw new ForbiddenException({
-          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
-        });
-      }
-      await this.subscriptionsService.incrementAiNoteUsage(userId);
-    }
-
     return this.annotationsService.create({
       ...createAnnotationDto,
       documentId,
@@ -120,16 +104,6 @@ export class AnnotationsController {
       }[];
     },
   ) {
-    if (updateAnnotationDto.aiResponse) {
-      const canUse = await this.subscriptionsService.canUseAiNote(userId);
-      if (!canUse) {
-        throw new ForbiddenException({
-          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
-        });
-      }
-      await this.subscriptionsService.incrementAiNoteUsage(userId);
-    }
-
     return this.annotationsService.update(id, userId, updateAnnotationDto);
   }
 

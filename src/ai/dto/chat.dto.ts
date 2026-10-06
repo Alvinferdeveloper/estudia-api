@@ -1,53 +1,16 @@
-import {
-  IsArray,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { IsResponseLanguage } from '../language';
 
-export class UIMessagePartDto {
-  @IsString()
-  type: string;
-
-  // Only text parts carry text; the AI SDK also sends parts like step-start.
-  @IsOptional()
-  @IsString()
-  text?: string;
-}
-
-export class UIMessageDto {
-  @IsString()
-  id: string;
-
-  @IsString()
-  role: string;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => UIMessagePartDto)
-  parts: UIMessagePartDto[];
-}
-
+// The server keeps the conversation history; the client only sends the new message.
 export class ChatDto {
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => UIMessageDto)
-  messages: UIMessageDto[];
+  @IsUUID()
+  conversationId: string;
 
+  // Omitted to retry the last message.
   @IsOptional()
   @IsString()
-  documentId?: string;
-
-  @IsOptional()
-  @IsString()
-  documentName?: string;
-
-  @IsOptional()
-  @IsString()
-  conversationId?: string;
+  @MaxLength(4000)
+  message?: string;
 
   @IsResponseLanguage()
   responseLanguage?: string;

@@ -39,15 +39,15 @@ export class CreditsService {
     return charge.run(work);
   }
 
-  // Streams can fail after they start; their usage settles null then, which refunds the charge.
+  // Streams can fail after they start; their completion settles null then, which refunds the charge.
   async chargeStream(
     userId: string,
     request: CreditRequest,
     work: () => Promise<StreamTextResult>,
   ): Promise<ReadableStream> {
     const charge = await this.reserve(userId, request);
-    const { stream, usage } = await charge.run(work);
-    void usage.then((settled) => (settled ? undefined : charge.refund()));
+    const { stream, completion } = await charge.run(work);
+    void completion.then((done) => (done ? undefined : charge.refund()));
     return stream;
   }
 

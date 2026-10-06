@@ -29,19 +29,19 @@ export interface AIUsage {
   reasoningTokens: number;
 }
 
-export interface GenerateTextResult {
+export interface AICompletion {
   text: string;
   usage: AIUsage;
 }
 
 export interface StreamTextResult {
   stream: ReadableStream;
-  // Settles when the stream ends (token counts are only known then); null if it failed.
-  usage: Promise<AIUsage | null>;
+  // Settles when the stream ends (text and token counts are only known then); null if it failed.
+  completion: Promise<AICompletion | null>;
 }
 
 export interface AIProvider {
-  generateText(options: GenerateTextOptions): Promise<GenerateTextResult>;
+  generateText(options: GenerateTextOptions): Promise<AICompletion>;
   streamText(options: StreamTextOptions): Promise<StreamTextResult>;
 }
 

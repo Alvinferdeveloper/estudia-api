@@ -13,6 +13,8 @@ import type { Request, Response } from 'express';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
 import { AIService } from './ai.service';
+import { ChatService } from './chat/chat.service';
+import { CreditsService } from '../entitlements/credits/credits.service';
 import { ChatDto } from './dto/chat.dto';
 import { GenerateQuestionsDto, EvaluateAnswerDto } from './dto/exam.dto';
 import { NoteDto } from './dto/note.dto';
@@ -25,7 +27,11 @@ import { buildErrorResponse } from '../common/errors/error-response';
 export class AIController {
   private readonly logger = new Logger(AIController.name);
 
-  constructor(private readonly aiService: AIService) {}
+  constructor(
+    private readonly aiService: AIService,
+    private readonly chatService: ChatService,
+    private readonly creditsService: CreditsService,
+  ) {}
 
   @Post('chat')
   async chat(
@@ -35,20 +41,12 @@ export class AIController {
     @Res() res: Response,
   ) {
     // Errors before streaming reach the global filter, which sends their code.
-    const stream = await this.aiService.streamChat(
-      dto.messages as any,
+    const stream = await this.creditsService.chargeStream(
       userId,
-      dto.documentId,
-      dto.documentName,
-      dto.responseLanguage,
+      { action: 'chat.message' },
+      () => this.chatService.streamReply(userId, dto),
     );
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-
-    this.pipeStream(res, req, stream, 'chat');
+    this.pipeStream(req, res, stream, 'chat', 'text/event-stream');
   }
 
   @Post('notes/stream')
@@ -58,22 +56,45 @@ export class AIController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const stream = await this.aiService.streamNote(dto);
+    const stream = await this.creditsService.chargeStream(
+      userId,
+      { action: 'note.generate' },
+      () => this.aiService.streamNote(dto),
+    );
+    this.pipeStream(
+      req,
+      res,
+      stream,
+      'notes/stream',
+      'text/plain; charset=utf-8',
+    );
+  }
 
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  @Post('vocabulary/explain')
+  async explainVocabulary(
+    @CurrentUserId() userId: string,
+    @Body() dto: VocabularyDto,
+  ) {
+    const explanation = await this.creditsService.charge(
+      userId,
+      { action: 'vocabulary.explain' },
+      () => this.aiService.explainVocabulary(dto),
+    );
+    return { explanation };
+  }
+
+  private pipeStream(
+    req: Request,
+    res: Response,
+    stream: ReadableStream,
+    feature: string,
+    contentType: string,
+  ): void {
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    this.pipeStream(res, req, stream, 'notes/stream');
-  }
-
-  private pipeStream(
-    res: Response,
-    req: Request,
-    stream: ReadableStream,
-    feature: string,
-  ): void {
     const nodeStream = Readable.fromWeb(stream as any);
 
     nodeStream.on('error', (err: Error) => {
@@ -110,15 +131,6 @@ export class AIController {
 
   private getStack(error: unknown): string | undefined {
     return error instanceof Error ? error.stack : String(error);
-  }
-
-  @Post('vocabulary/explain')
-  async explainVocabulary(
-    @CurrentUserId() userId: string,
-    @Body() dto: VocabularyDto,
-  ) {
-    const explanation = await this.aiService.explainVocabulary(dto);
-    return { explanation };
   }
 
   @Post('exam/generate')

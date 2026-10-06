@@ -8,26 +8,20 @@ import {
   Param,
   ParseUUIDPipe,
   UseGuards,
-  ForbiddenException,
 } from '@nestjs/common';
 import { VocabularyService } from './vocabulary.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
   BoundingRect,
   AnnotationRect,
 } from '../typeorm/entities/Annotation.entity';
 import { VocabularyExplanation } from '../typeorm/entities/VocabularyEntry.entity';
-import { ErrorCode } from '../common/errors/error-codes';
 
 @Controller()
 @UseGuards(AuthGuard)
 export class VocabularyController {
-  constructor(
-    private readonly vocabularyService: VocabularyService,
-    private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private readonly vocabularyService: VocabularyService) {}
 
   @Get('documents/:documentId/vocabulary')
   async findByDocument(
@@ -53,16 +47,6 @@ export class VocabularyController {
       explanation?: VocabularyExplanation;
     },
   ) {
-    if (createVocabularyDto.explanation) {
-      const canUse = await this.subscriptionsService.canUseAiNote(userId);
-      if (!canUse) {
-        throw new ForbiddenException({
-          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
-        });
-      }
-      await this.subscriptionsService.incrementAiNoteUsage(userId);
-    }
-
     return this.vocabularyService.create({
       ...createVocabularyDto,
       documentId,
@@ -82,16 +66,6 @@ export class VocabularyController {
       rects?: AnnotationRect[];
     },
   ) {
-    if (updateVocabularyDto.explanation) {
-      const canUse = await this.subscriptionsService.canUseAiNote(userId);
-      if (!canUse) {
-        throw new ForbiddenException({
-          code: ErrorCode.AI_NOTES_LIMIT_REACHED,
-        });
-      }
-      await this.subscriptionsService.incrementAiNoteUsage(userId);
-    }
-
     return this.vocabularyService.update(id, userId, updateVocabularyDto);
   }
 

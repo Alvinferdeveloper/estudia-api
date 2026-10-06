@@ -15,7 +15,7 @@ import type {
   AIFeature,
   AIUsage,
   GenerateTextOptions,
-  GenerateTextResult,
+  AICompletion,
   StreamTextOptions,
   StreamTextResult,
 } from './ai-provider.interface';
@@ -57,7 +57,7 @@ export class GoogleGeminiProvider implements AIProvider {
     systemPrompt,
     messages,
     userPrompt,
-  }: GenerateTextOptions): Promise<GenerateTextResult> {
+  }: GenerateTextOptions): Promise<AICompletion> {
     const { model, maxOutputTokens } = FEATURE_MODELS[feature];
     const modelMessages: ModelMessage[] = messages?.length
       ? messages
@@ -116,12 +116,12 @@ export class GoogleGeminiProvider implements AIProvider {
               stream: toTextStream({ stream: result.stream }),
             });
 
-      const usage = Promise.resolve(result.totalUsage).then(
-        (total) => toUsage(model, total),
+      const completion = Promise.all([result.text, result.totalUsage]).then(
+        ([text, total]) => ({ text, usage: toUsage(model, total) }),
         () => null,
       );
 
-      return { stream: response.body!, usage };
+      return { stream: response.body!, completion };
     } catch (error) {
       this.logger.error(
         `streamText failed for feature '${feature}':`,

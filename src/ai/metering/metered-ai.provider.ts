@@ -2,7 +2,7 @@ import type {
   AIProvider,
   AIUsage,
   GenerateTextOptions,
-  GenerateTextResult,
+  AICompletion,
   StreamTextOptions,
   StreamTextResult,
 } from '../providers/ai-provider.interface';
@@ -18,7 +18,7 @@ export class MeteredAIProvider implements AIProvider {
 
   async generateText(
     options: GenerateTextOptions,
-  ): Promise<GenerateTextResult> {
+  ): Promise<AICompletion> {
     const startedAt = Date.now();
     const context = aiCallContext.current();
     try {
@@ -55,7 +55,9 @@ export class MeteredAIProvider implements AIProvider {
 
     try {
       const result = await this.inner.streamText(options);
-      void result.usage.then(record);
+      void result.completion.then((completion) =>
+        record(completion?.usage ?? null),
+      );
       return result;
     } catch (error) {
       void record(null);

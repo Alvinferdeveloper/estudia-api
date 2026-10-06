@@ -1,11 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { convertToModelMessages } from 'ai';
 import type { ModelMessage } from 'ai';
-import { RagService } from '../rag/rag.service';
-import { DocumentsService } from '../documents/documents.service';
 import { AI_PROVIDER } from './providers/ai-provider.interface';
-import type { AIProvider } from './providers/ai-provider.interface';
-import { buildChatSystemPrompt, SearchResult } from './prompts/chat.prompts';
+import type {
+  AIProvider,
+  StreamTextResult,
+} from './providers/ai-provider.interface';
 import {
   buildGenerateQuestionsPrompt,
   buildEvaluateAnswerPrompt,
@@ -27,74 +26,7 @@ import { VocabularyExplanation } from '../typeorm/entities/VocabularyEntry.entit
 export class AIService {
   private readonly logger = new Logger(AIService.name);
 
-  constructor(
-    @Inject(AI_PROVIDER) private readonly provider: AIProvider,
-    private ragService: RagService,
-    private documentsService: DocumentsService,
-  ) {}
-
-  // ─── Chat with RAG ───────────────────────────────────────────────
-
-  private getLastUserQuery(messages: any[]): string | null {
-    const lastUserMessage = messages
-      .filter((m: any) => m.role === 'user')
-      .pop();
-
-    return (
-      lastUserMessage?.parts?.find((p: any) => p.type === 'text')?.text ?? null
-    );
-  }
-
-  private async ensureDocumentIsVectorized(
-    documentId: string,
-    userId: string,
-  ): Promise<void> {
-    try {
-      const isVectorized =
-        await this.ragService.isDocumentVectorized(documentId);
-      if (!isVectorized) {
-        await this.ragService.vectorizeDocument(documentId, userId);
-      }
-    } catch (error) {
-      this.logger.error(
-        'Auto-vectorize error:',
-        error instanceof Error ? error.stack : String(error),
-      );
-    }
-  }
-
-  async streamChat(
-    rawMessages: any[],
-    userId: string,
-    documentId?: string,
-    documentName: string = 'documento',
-    responseLanguage?: string,
-  ): Promise<ReadableStream> {
-    let chunks: SearchResult[] = [];
-
-    if (documentId) {
-      await this.ensureDocumentIsVectorized(documentId, userId);
-
-      const query = this.getLastUserQuery(rawMessages);
-      if (query) {
-        chunks = await this.ragService.searchDocument(documentId, query, 3);
-      }
-    }
-
-    const systemPrompt = buildChatSystemPrompt(
-      documentName,
-      chunks,
-      responseLanguage,
-    );
-    const modelMessages = await convertToModelMessages(rawMessages);
-
-    const { stream } = await this.provider.streamText({
-      feature: 'chat',
-      systemPrompt,
-      messages: modelMessages,
-    });
-    return stream;
-  }
+  constructor(@Inject(AI_PROVIDER) private readonly provider: AIProvider) {}
 
   // ─── Exam ─────────────────────────────────────────────────────────
 
@@ -352,19 +284,16 @@ export class AIService {
     documentContext?: string;
     originalNote?: string;
     responseLanguage?: string;
-  }): Promise<ReadableStream> {
-    const userContent = buildNoteUserPrompt(data);
-
+  }): Promise<StreamTextResult> {
     const modelMessages: ModelMessage[] = [
-      { role: 'user', content: userContent },
+      { role: 'user', content: buildNoteUserPrompt(data) },
     ];
 
-    const { stream } = await this.provider.streamText({
+    return this.provider.streamText({
       feature: 'noteStream',
       systemPrompt: buildNoteSystemPrompt(data.responseLanguage),
       messages: modelMessages,
     });
-    return stream;
   }
 
   // ─── Vocabulary (Language Mode) ────────────────────────────────────
