@@ -347,22 +347,6 @@ export class AIService {
 
   // ─── Notes ────────────────────────────────────────────────────────
 
-  async generateNote(data: {
-    selectedText: string;
-    prompt: string;
-    documentContext?: string;
-    originalNote?: string;
-    responseLanguage?: string;
-  }): Promise<string> {
-    const userContent = buildNoteUserPrompt(data);
-
-    return this.provider.generateText({
-      feature: 'noteGeneration',
-      systemPrompt: buildNoteSystemPrompt(data.responseLanguage),
-      userPrompt: userContent,
-    });
-  }
-
   async streamNote(data: {
     selectedText: string;
     prompt: string;

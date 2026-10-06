@@ -3,7 +3,6 @@ import type { ModelMessage } from 'ai';
 export type AIFeature =
   | 'chat'
   | 'exam'
-  | 'noteGeneration'
   | 'noteStream'
   | 'vocabulary';
 

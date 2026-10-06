@@ -112,12 +112,6 @@ export class AIController {
     return error instanceof Error ? error.stack : String(error);
   }
 
-  @Post('notes/generate')
-  async generateNote(@CurrentUserId() userId: string, @Body() dto: NoteDto) {
-    const content = await this.aiService.generateNote(dto);
-    return { content };
-  }
-
   @Post('vocabulary/explain')
   async explainVocabulary(
     @CurrentUserId() userId: string,
