@@ -245,7 +245,7 @@ export class ExamService {
     return this.getAttempt(userId, examId, attemptId);
   }
 
-  // The user's exams, newest first, each with its finished attempts.
+  // The user's exams, newest first, each with its attempts (in-progress ones can be resumed).
   async getUserExams(
     userId: string,
     documentId?: string,
@@ -257,10 +257,7 @@ export class ExamService {
     if (exams.length === 0) return [];
 
     const attempts = await this.attemptRepository.find({
-      where: {
-        examId: In(exams.map((exam) => exam.id)),
-        status: ExamAttemptStatus.COMPLETED,
-      },
+      where: { examId: In(exams.map((exam) => exam.id)) },
       order: { startedAt: 'DESC' },
     });
 
