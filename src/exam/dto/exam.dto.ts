@@ -8,11 +8,11 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Max,
   MaxLength,
   Min,
 } from 'class-validator';
-import { ExamMode, QuestionType } from '../../typeorm/entities/Exam.entity';
+import { QuestionType } from '../../typeorm/entities/Exam.entity';
+import { ExamAttemptMode } from '../../typeorm/entities/ExamAttempt.entity';
 import { IsResponseLanguage } from '../../ai/language';
 
 // Bounds the input tokens of one generation (roughly 20 dense pages).
@@ -36,8 +36,10 @@ export class GenerateExamDto {
   @MaxLength(MAX_CONTENT_CHARS)
   content: string;
 
-  @IsEnum(ExamMode)
-  mode: ExamMode;
+  // The first attempt starts right away in this mode.
+  @IsOptional()
+  @IsEnum(ExamAttemptMode)
+  mode: ExamAttemptMode = ExamAttemptMode.PRACTICE;
 
   @IsIn(DIFFICULTIES)
   difficulty: (typeof DIFFICULTIES)[number];
@@ -60,29 +62,20 @@ export class GenerateExamDto {
   responseLanguage?: string;
 }
 
-export class EvaluateAnswerDto {
+// The mode an attempt is taken in.
+export class StartAttemptDto {
+  @IsEnum(ExamAttemptMode)
+  mode: ExamAttemptMode;
+}
+
+export class AnswerQuestionDto {
+  @IsUUID()
+  questionId: string;
+
   @IsString()
   @MaxLength(4000)
   userAnswer: string;
 
   @IsResponseLanguage()
   responseLanguage?: string;
-}
-
-export class SaveExamResultDto {
-  @IsUUID()
-  examId: string;
-
-  @IsInt()
-  @Min(0)
-  @Max(100)
-  score: number;
-
-  @IsInt()
-  @Min(0)
-  correctAnswers: number;
-
-  @IsInt()
-  @Min(1)
-  totalQuestions: number;
 }

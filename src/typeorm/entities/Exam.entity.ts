@@ -9,12 +9,6 @@ import {
 import { User } from './User.entity';
 import { Document } from './Document.entity';
 
-export enum ExamMode {
-  QUICK_REVIEW = 'quick_review',
-  EXAM_SIMULATION = 'exam_simulation',
-  CUSTOM = 'custom',
-}
-
 export enum QuestionType {
   OPEN = 'open',
   MULTIPLE_CHOICE = 'multiple_choice',
@@ -36,9 +30,6 @@ export class Exam {
 
   @Column('simple-array', { name: 'pages', nullable: true })
   pages: number[];
-
-  @Column({ type: 'enum', enum: ExamMode, default: ExamMode.QUICK_REVIEW })
-  mode: ExamMode;
 
   @Column({ type: 'int', default: 0 })
   totalQuestions: number;

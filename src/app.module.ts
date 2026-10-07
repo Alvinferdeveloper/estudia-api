@@ -28,7 +28,8 @@ import { ExamModule } from './exam/exam.module';
 import { AIModule } from './ai/ai.module';
 import { Exam } from './typeorm/entities/Exam.entity';
 import { ExamQuestion } from './typeorm/entities/ExamQuestion.entity';
-import { ExamResult } from './typeorm/entities/ExamResult.entity';
+import { ExamAttempt } from './typeorm/entities/ExamAttempt.entity';
+import { ExamAnswer } from './typeorm/entities/ExamAnswer.entity';
 import { Conversation } from './typeorm/entities/Conversation.entity';
 import { DocumentImage } from './typeorm/entities/DocumentImage.entity';
 import { VocabularyModule } from './vocabulary/vocabulary.module';
@@ -79,7 +80,8 @@ import { UsageModule } from './usage/usage.module';
         Payment,
         Exam,
         ExamQuestion,
-        ExamResult,
+        ExamAttempt,
+        ExamAnswer,
         Conversation,
         DocumentImage,
         VocabularyEntry,

@@ -14,9 +14,9 @@ import { CurrentUserId } from '../common/decorators/user.decorator';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { CreditsService } from '../entitlements/credits/credits.service';
 import {
-  EvaluateAnswerDto,
+  AnswerQuestionDto,
   GenerateExamDto,
-  SaveExamResultDto,
+  StartAttemptDto,
 } from './dto/exam.dto';
 
 @Controller('exam')
@@ -36,31 +36,7 @@ export class ExamController {
     return this.examService.getUserExams(userId, documentId);
   }
 
-  @Get(':id')
-  async getExam(
-    @CurrentUserId() userId: string,
-    @Param('id', ParseUUIDPipe) examId: string,
-  ) {
-    return this.examService.getOwnedExam(userId, examId);
-  }
-
-  @Get(':id/questions')
-  async getExamQuestions(
-    @CurrentUserId() userId: string,
-    @Param('id', ParseUUIDPipe) examId: string,
-  ) {
-    return this.examService.getQuestions(userId, examId);
-  }
-
-  @Get(':id/results')
-  async getExamResults(
-    @CurrentUserId() userId: string,
-    @Param('id', ParseUUIDPipe) examId: string,
-  ) {
-    return this.examService.getResults(userId, examId);
-  }
-
-  // The price scales with the exam size; evaluating its answers is included.
+  // The price scales with the exam size; grading its answers is included.
   @Post('generate')
   async generate(
     @CurrentUserId() userId: string,
@@ -78,21 +54,40 @@ export class ExamController {
     );
   }
 
-  @Post(':id/questions/:questionId/evaluate')
-  async evaluateAnswer(
+  @Post(':id/attempts')
+  async startAttempt(
     @CurrentUserId() userId: string,
     @Param('id', ParseUUIDPipe) examId: string,
-    @Param('questionId', ParseUUIDPipe) questionId: string,
-    @Body() dto: EvaluateAnswerDto,
+    @Body() dto: StartAttemptDto,
   ) {
-    return this.examService.evaluateAnswer(userId, examId, questionId, dto);
+    return this.examService.startAttempt(userId, examId, dto.mode);
   }
 
-  @Post('result')
-  async saveResult(
+  @Get(':id/attempts/:attemptId')
+  async getAttempt(
     @CurrentUserId() userId: string,
-    @Body() dto: SaveExamResultDto,
+    @Param('id', ParseUUIDPipe) examId: string,
+    @Param('attemptId', ParseUUIDPipe) attemptId: string,
   ) {
-    return this.examService.saveResult(userId, dto);
+    return this.examService.getAttempt(userId, examId, attemptId);
+  }
+
+  @Post(':id/attempts/:attemptId/answers')
+  async answer(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
+    @Param('attemptId', ParseUUIDPipe) attemptId: string,
+    @Body() dto: AnswerQuestionDto,
+  ) {
+    return this.examService.answer(userId, examId, attemptId, dto);
+  }
+
+  @Post(':id/attempts/:attemptId/finish')
+  async finish(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
+    @Param('attemptId', ParseUUIDPipe) attemptId: string,
+  ) {
+    return this.examService.finish(userId, examId, attemptId);
   }
 }
