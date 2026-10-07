@@ -7,12 +7,14 @@ export type AIFeature =
   | 'vocabulary'
   | 'visualQuery';
 
-export interface GenerateTextOptions {
+// Providers reject a request without user input, so every call must carry a prompt or messages.
+export type GenerateTextOptions = {
   feature: AIFeature;
-  systemPrompt: string;
-  messages?: ModelMessage[];
-  userPrompt?: string;
-}
+  systemPrompt?: string;
+} & (
+  | { userPrompt: string; messages?: never }
+  | { messages: ModelMessage[]; userPrompt?: never }
+);
 
 export interface StreamTextOptions {
   feature: AIFeature;

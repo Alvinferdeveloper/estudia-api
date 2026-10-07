@@ -52,16 +52,11 @@ export class GoogleGeminiProvider implements AIProvider {
     this.client = createGoogleGenerativeAI({ apiKey });
   }
 
-  async generateText({
-    feature,
-    systemPrompt,
-    messages,
-    userPrompt,
-  }: GenerateTextOptions): Promise<AICompletion> {
+  async generateText(options: GenerateTextOptions): Promise<AICompletion> {
+    const { feature, systemPrompt } = options;
     const { model, maxOutputTokens } = FEATURE_MODELS[feature];
-    const modelMessages: ModelMessage[] = messages?.length
-      ? messages
-      : [{ role: 'user', content: userPrompt || '' }];
+    const modelMessages: ModelMessage[] =
+      options.messages ?? [{ role: 'user', content: options.userPrompt }];
 
     try {
       const result = await generateText({

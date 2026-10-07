@@ -134,7 +134,7 @@ export class AIService {
   ): Promise<any[]> {
     const { text } = await this.provider.generateText({
       feature: 'exam',
-      systemPrompt: buildGenerateQuestionsPrompt({
+      userPrompt: buildGenerateQuestionsPrompt({
         content,
         pages,
         difficulty,
@@ -221,7 +221,7 @@ export class AIService {
     try {
       const { text } = await this.provider.generateText({
         feature: 'exam',
-        systemPrompt: prompt,
+        userPrompt: prompt,
       });
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
