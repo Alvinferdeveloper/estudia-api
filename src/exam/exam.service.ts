@@ -2,10 +2,11 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { Exam, QuestionType } from '../typeorm/entities/Exam.entity';
 import { ExamQuestion } from '../typeorm/entities/ExamQuestion.entity';
 import {
@@ -18,12 +19,19 @@ import { Document } from '../typeorm/entities/Document.entity';
 import { ErrorCode } from '../common/errors/error-codes';
 import { AIService } from '../ai/ai.service';
 import { aiCallContext } from '../ai/metering/ai-call-context';
+import { AIProviderException } from '../ai/providers/ai-provider.exception';
 import type { AnswerQuestionDto, GenerateExamDto } from './dto/exam.dto';
+import {
+  DEADLINE_GRACE_MS,
+  attemptDeadline,
+  simulationTimeLimit,
+} from './exam-timing';
 import {
   type AnswerView,
   type AttemptSummary,
   type AttemptView,
   type ExamView,
+  revealsGrades,
   toAnswerView,
   toAttemptSummary,
   toExamView,
@@ -42,6 +50,11 @@ interface GeneratedQuestion {
   idealAnswer: string;
 }
 
+interface Grade {
+  score: number;
+  feedback: string | null;
+}
+
 export interface ExamWithAttempts extends ExamView {
   attempts: AttemptSummary[];
 }
@@ -57,12 +70,14 @@ const scoreAttempt = (
       ? answers.length
       : attempt.totalQuestions;
   if (graded === 0) return 0;
-  const total = answers.reduce((sum, answer) => sum + answer.score, 0);
+  const total = answers.reduce((sum, answer) => sum + (answer.score ?? 0), 0);
   return Math.round((total / graded) * 10);
 };
 
 @Injectable()
 export class ExamService {
+  private readonly logger = new Logger(ExamService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     private readonly aiService: AIService,
@@ -120,13 +135,12 @@ export class ExamService {
           }),
         ),
       );
-      const attempt = await manager.save(
-        manager.create(ExamAttempt, {
-          examId: exam.id,
-          userId,
-          mode: dto.mode,
-          totalQuestions: generated.length,
-        }),
+      const attempt = await this.createAttempt(
+        manager,
+        exam,
+        userId,
+        dto.mode,
+        generated,
       );
       return { examId: exam.id, attemptId: attempt.id };
     });
@@ -138,13 +152,16 @@ export class ExamService {
     mode: ExamAttemptMode,
   ): Promise<{ attemptId: string }> {
     const exam = await this.getOwnedExam(userId, examId);
-    const attempt = await this.attemptRepository.save(
-      this.attemptRepository.create({
-        examId,
-        userId,
-        mode,
-        totalQuestions: exam.totalQuestions,
-      }),
+    const questions = await this.questionRepository.find({
+      where: { examId },
+      select: { type: true },
+    });
+    const attempt = await this.createAttempt(
+      this.dataSource.manager,
+      exam,
+      userId,
+      mode,
+      questions,
     );
     return { attemptId: attempt.id };
   }
@@ -161,19 +178,22 @@ export class ExamService {
       this.answerRepository.find({ where: { attemptId } }),
     ]);
     const questionsById = new Map(questions.map((q) => [q.id, q]));
+    const reveal = revealsGrades(attempt);
 
     return {
       attempt: toAttemptSummary(attempt),
       exam: toExamView(exam),
       questions: questions.map(toQuestionView),
       answers: answers.map((answer) =>
-        toAnswerView(answer, questionsById.get(answer.questionId)!),
+        toAnswerView(answer, questionsById.get(answer.questionId)!, reveal),
       ),
+      serverNow: new Date(),
     };
   }
 
-  // Grades and saves one answer. Resending an answered question returns the saved grade,
-  // so a retried request never spends a second AI grading.
+  // Practice grades each answer as it is given; resending one returns the saved grade, so a retry
+  // never spends a second AI grading. A simulation only stores the answer (changeable until the
+  // end) and grades everything on finish.
   async answer(
     userId: string,
     examId: string,
@@ -181,9 +201,7 @@ export class ExamService {
     dto: AnswerQuestionDto,
   ): Promise<AnswerView> {
     const attempt = await this.getOwnedAttempt(userId, examId, attemptId);
-    if (attempt.status !== ExamAttemptStatus.IN_PROGRESS) {
-      throw new ConflictException({ code: ErrorCode.EXAM_ATTEMPT_FINISHED });
-    }
+    this.assertAnswerable(attempt);
 
     const question = await this.questionRepository.findOne({
       where: { id: dto.questionId, examId },
@@ -195,35 +213,42 @@ export class ExamService {
     const existing = await this.answerRepository.findOne({
       where: { attemptId, questionId: question.id },
     });
-    if (existing) return toAnswerView(existing, question);
 
-    // Closed questions are graded without the model, so only open ones spend gradings.
-    if (question.type === QuestionType.OPEN) {
-      await this.spendEvaluation(question.id);
+    if (attempt.mode === ExamAttemptMode.SIMULATION) {
+      const saved = await this.answerRepository.save(
+        existing
+          ? Object.assign(existing, { userAnswer: dto.userAnswer })
+          : this.answerRepository.create({
+              attemptId,
+              questionId: question.id,
+              userAnswer: dto.userAnswer,
+              score: null,
+            }),
+      );
+      return toAnswerView(saved, question, false);
     }
 
-    const evaluation = await aiCallContext.run({ userId }, () =>
-      this.aiService.evaluateAnswer({
-        question: question.text,
-        idealAnswer: question.idealAnswer ?? '',
-        questionType: question.type ?? QuestionType.OPEN,
-        userAnswer: dto.userAnswer,
-        responseLanguage: dto.responseLanguage,
-      }),
-    );
+    if (existing) return toAnswerView(existing, question, true);
 
+    const grade = await this.grade(
+      userId,
+      question,
+      dto.userAnswer,
+      dto.responseLanguage,
+    );
     const saved = await this.answerRepository.save(
       this.answerRepository.create({
         attemptId,
         questionId: question.id,
         userAnswer: dto.userAnswer,
-        score: evaluation.score,
-        feedback: evaluation.feedback || null,
+        ...grade,
       }),
     );
-    return toAnswerView(saved, question);
+    return toAnswerView(saved, question, true);
   }
 
+  // Grades what is still ungraded (a simulation's answers) and closes the attempt. If a grading
+  // fails the attempt stays open with every answer kept, and finishing again grades only the rest.
   // Idempotent: finishing a finished attempt returns it unchanged.
   async finish(
     userId: string,
@@ -233,12 +258,14 @@ export class ExamService {
     const attempt = await this.getOwnedAttempt(userId, examId, attemptId);
 
     if (attempt.status === ExamAttemptStatus.IN_PROGRESS) {
-      const answers = await this.answerRepository.find({ where: { attemptId } });
+      const answers = await this.gradePending(userId, attempt);
       await this.attemptRepository.update(attempt.id, {
         status: ExamAttemptStatus.COMPLETED,
         finishedAt: new Date(),
         score: scoreAttempt(attempt, answers),
-        correctAnswers: answers.filter((a) => a.score >= PASSING_SCORE).length,
+        correctAnswers: answers.filter(
+          (a) => a.score !== null && a.score >= PASSING_SCORE,
+        ).length,
       });
     }
 
@@ -279,6 +306,27 @@ export class ExamService {
     return exam;
   }
 
+  private createAttempt(
+    manager: EntityManager,
+    exam: Exam,
+    userId: string,
+    mode: ExamAttemptMode,
+    questions: { type: QuestionType | null }[],
+  ): Promise<ExamAttempt> {
+    return manager.save(
+      manager.create(ExamAttempt, {
+        examId: exam.id,
+        userId,
+        mode,
+        totalQuestions: exam.totalQuestions,
+        timeLimitSeconds:
+          mode === ExamAttemptMode.SIMULATION
+            ? simulationTimeLimit(questions)
+            : null,
+      }),
+    );
+  }
+
   private async getOwnedAttempt(
     userId: string,
     examId: string,
@@ -291,6 +339,73 @@ export class ExamService {
       throw new NotFoundException({ code: ErrorCode.EXAM_NOT_FOUND });
     }
     return attempt;
+  }
+
+  private assertAnswerable(attempt: ExamAttempt): void {
+    if (attempt.status !== ExamAttemptStatus.IN_PROGRESS) {
+      throw new ConflictException({ code: ErrorCode.EXAM_ATTEMPT_FINISHED });
+    }
+    const deadline = attemptDeadline(attempt);
+    if (deadline && Date.now() > deadline.getTime() + DEADLINE_GRACE_MS) {
+      throw new ConflictException({ code: ErrorCode.EXAM_TIME_UP });
+    }
+  }
+
+  // Grades the attempt's ungraded answers in parallel, saving each one that succeeds.
+  private async gradePending(
+    userId: string,
+    attempt: ExamAttempt,
+  ): Promise<ExamAnswer[]> {
+    const answers = await this.answerRepository.find({
+      where: { attemptId: attempt.id },
+      relations: { question: true },
+    });
+    const pending = answers.filter((answer) => answer.score === null);
+
+    const results = await Promise.allSettled(
+      pending.map(async (answer) => {
+        Object.assign(
+          answer,
+          await this.grade(userId, answer.question, answer.userAnswer),
+        );
+        await this.answerRepository.save(answer);
+      }),
+    );
+
+    const failures = results.filter((r) => r.status === 'rejected');
+    if (failures.length > 0) {
+      this.logger.error(
+        `Could not grade ${failures.length} answers of attempt ${attempt.id}`,
+      );
+      // A spent evaluation limit is the error worth showing; otherwise the model failed.
+      const reason = (failures[0] as PromiseRejectedResult).reason;
+      throw reason instanceof ForbiddenException
+        ? reason
+        : new AIProviderException('Exam grading failed', reason);
+    }
+    return answers;
+  }
+
+  // Closed questions are graded without the model, so only open ones spend gradings.
+  private async grade(
+    userId: string,
+    question: ExamQuestion,
+    userAnswer: string,
+    responseLanguage?: string,
+  ): Promise<Grade> {
+    if (question.type === QuestionType.OPEN) {
+      await this.spendEvaluation(question.id);
+    }
+    const evaluation = await aiCallContext.run({ userId }, () =>
+      this.aiService.evaluateAnswer({
+        question: question.text,
+        idealAnswer: question.idealAnswer ?? '',
+        questionType: question.type ?? QuestionType.OPEN,
+        userAnswer,
+        responseLanguage,
+      }),
+    );
+    return { score: evaluation.score, feedback: evaluation.feedback || null };
   }
 
   // Conditional increment, so parallel requests can't exceed the paid gradings.

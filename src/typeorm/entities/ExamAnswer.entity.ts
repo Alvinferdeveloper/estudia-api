@@ -26,9 +26,9 @@ export class ExamAnswer {
   @Column('text', { name: 'userAnswer' })
   userAnswer: string;
 
-  // 0-10.
-  @Column('int', { name: 'score' })
-  score: number;
+  // 0-10; null while a simulation awaits grading at the end.
+  @Column('int', { name: 'score', nullable: true })
+  score: number | null;
 
   @Column('text', { name: 'feedback', nullable: true })
   feedback: string | null;

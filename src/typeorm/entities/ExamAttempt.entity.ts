@@ -58,6 +58,10 @@ export class ExamAttempt {
   @Column('int', { name: 'totalQuestions' })
   totalQuestions: number;
 
+  // Simulations only; the deadline is startedAt plus this.
+  @Column('int', { name: 'timeLimitSeconds', nullable: true })
+  timeLimitSeconds: number | null;
+
   @ManyToOne(() => Exam, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'examId' })
   exam: Exam;

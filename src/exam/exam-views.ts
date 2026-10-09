@@ -1,10 +1,15 @@
 import type { Exam } from '../typeorm/entities/Exam.entity';
 import type { ExamQuestion } from '../typeorm/entities/ExamQuestion.entity';
-import type { ExamAttempt } from '../typeorm/entities/ExamAttempt.entity';
+import {
+  type ExamAttempt,
+  ExamAttemptMode,
+  ExamAttemptStatus,
+} from '../typeorm/entities/ExamAttempt.entity';
 import type { ExamAnswer } from '../typeorm/entities/ExamAnswer.entity';
+import { attemptDeadline } from './exam-timing';
 
 // What the client sees. Questions never carry their ideal answer: it is only revealed
-// alongside the grade of an answered question.
+// alongside the grade of an answered question, and a simulation reveals grades only once finished.
 
 export type ExamView = Pick<
   Exam,
@@ -28,7 +33,8 @@ export type AttemptSummary = Pick<
   | 'score'
   | 'correctAnswers'
   | 'totalQuestions'
->;
+  | 'timeLimitSeconds'
+> & { deadline: Date | null };
 
 export interface QuestionView {
   id: string;
@@ -41,7 +47,7 @@ export interface QuestionView {
 export interface AnswerView {
   questionId: string;
   userAnswer: string;
-  score: number;
+  score: number | null;
   feedback: string | null;
   idealAnswer: string | null;
 }
@@ -51,6 +57,8 @@ export interface AttemptView {
   exam: ExamView;
   questions: QuestionView[];
   answers: AnswerView[];
+  // Lets the client run the countdown on the server's clock.
+  serverNow: Date;
 }
 
 export const toExamView = (exam: Exam): ExamView => ({
@@ -73,7 +81,13 @@ export const toAttemptSummary = (attempt: ExamAttempt): AttemptSummary => ({
   score: attempt.score,
   correctAnswers: attempt.correctAnswers,
   totalQuestions: attempt.totalQuestions,
+  timeLimitSeconds: attempt.timeLimitSeconds,
+  deadline: attemptDeadline(attempt),
 });
+
+export const revealsGrades = (attempt: ExamAttempt): boolean =>
+  attempt.mode === ExamAttemptMode.PRACTICE ||
+  attempt.status === ExamAttemptStatus.COMPLETED;
 
 export const toQuestionView = (question: ExamQuestion): QuestionView => ({
   id: question.id,
@@ -86,10 +100,11 @@ export const toQuestionView = (question: ExamQuestion): QuestionView => ({
 export const toAnswerView = (
   answer: ExamAnswer,
   question: ExamQuestion,
+  reveal: boolean,
 ): AnswerView => ({
   questionId: answer.questionId,
   userAnswer: answer.userAnswer,
-  score: answer.score,
-  feedback: answer.feedback,
-  idealAnswer: question.idealAnswer,
+  score: reveal ? answer.score : null,
+  feedback: reveal ? answer.feedback : null,
+  idealAnswer: reveal ? question.idealAnswer : null,
 });
