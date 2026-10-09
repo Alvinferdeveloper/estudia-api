@@ -393,6 +393,8 @@ export class ExamService {
     userAnswer: string,
     responseLanguage?: string,
   ): Promise<Grade> {
+    // A cleared simulation answer stays on record as blank; it's wrong without asking the model.
+    if (!userAnswer.trim()) return { score: 0, feedback: null };
     if (question.type === QuestionType.OPEN) {
       await this.spendEvaluation(question.id);
     }
