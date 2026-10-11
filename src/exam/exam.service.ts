@@ -296,6 +296,16 @@ export class ExamService {
     }));
   }
 
+  async rename(
+    userId: string,
+    examId: string,
+    title: string,
+  ): Promise<ExamView> {
+    const exam = await this.getOwnedExam(userId, examId);
+    exam.title = title;
+    return toExamView(await this.examRepository.save(exam));
+  }
+
   async getOwnedExam(userId: string, examId: string): Promise<Exam> {
     const exam = await this.examRepository.findOne({
       where: { id: examId, userId },

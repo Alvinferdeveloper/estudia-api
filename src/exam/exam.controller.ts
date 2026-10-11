@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   ParseUUIDPipe,
   Post,
   Query,
@@ -16,6 +17,7 @@ import { CreditsService } from '../entitlements/credits/credits.service';
 import {
   AnswerQuestionDto,
   GenerateExamDto,
+  RenameExamDto,
   StartAttemptDto,
 } from './dto/exam.dto';
 
@@ -52,6 +54,15 @@ export class ExamController {
       { action: 'exam.generate', params: { questions: dto.questionCount } },
       () => this.examService.generate(userId, dto),
     );
+  }
+
+  @Patch(':id')
+  async rename(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) examId: string,
+    @Body() dto: RenameExamDto,
+  ) {
+    return this.examService.rename(userId, examId, dto.title);
   }
 
   @Post(':id/attempts')

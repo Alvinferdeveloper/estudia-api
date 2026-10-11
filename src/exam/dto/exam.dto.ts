@@ -11,6 +11,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { QuestionType } from '../../typeorm/entities/Exam.entity';
 import { ExamAttemptMode } from '../../typeorm/entities/ExamAttempt.entity';
 import { IsResponseLanguage } from '../../ai/language';
@@ -19,6 +20,12 @@ import { IsResponseLanguage } from '../../ai/language';
 const MAX_CONTENT_CHARS = 100_000;
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
+
+// Mirrored in estudia-front `exam/hooks/useExam.ts` (EXAM_TITLE_MAX_LENGTH) for the inputs.
+export const MAX_TITLE_LENGTH = 120;
+
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
 
 export class GenerateExamDto {
   @IsUUID()
@@ -54,12 +61,21 @@ export class GenerateExamDto {
   questionCount: number = 5;
 
   @IsOptional()
+  @Transform(trim)
   @IsString()
-  @MaxLength(255)
+  @MaxLength(MAX_TITLE_LENGTH)
   title?: string;
 
   @IsResponseLanguage()
   responseLanguage?: string;
+}
+
+export class RenameExamDto {
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(MAX_TITLE_LENGTH)
+  title: string;
 }
 
 // The mode an attempt is taken in.
