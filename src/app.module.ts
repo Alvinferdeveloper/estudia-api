@@ -39,6 +39,7 @@ import { AICallLog } from './typeorm/entities/AICallLog.entity';
 import { CreditUsage } from './typeorm/entities/CreditUsage.entity';
 import { CreditLedgerEntry } from './typeorm/entities/CreditLedgerEntry.entity';
 import { EntitlementsModule } from './entitlements/entitlements.module';
+import { DatabaseTimezoneCheck } from './common/database/database-timezone.check';
 import { UsageModule } from './usage/usage.module';
 
 @Module({
@@ -94,6 +95,6 @@ import { UsageModule } from './usage/usage.module';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, DatabaseTimezoneCheck],
 })
 export class AppModule {}
