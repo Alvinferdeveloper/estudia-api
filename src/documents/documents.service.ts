@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, IsNull } from 'typeorm';
@@ -43,6 +44,8 @@ export interface DocumentItem {
   tags: string[];
   isStarred: boolean;
   pageCount: number | null;
+  lastPage: number | null;
+  furthestPage: number | null;
   type: 'document';
 }
 
@@ -261,6 +264,8 @@ export class DocumentsService {
       tags: doc.tags,
       isStarred: doc.isStarred,
       pageCount: doc.pageCount,
+      lastPage: doc.lastPage,
+      furthestPage: doc.furthestPage,
       type: 'document' as const,
     }));
 
@@ -347,6 +352,31 @@ export class DocumentsService {
       throw new NotFoundException({ code: ErrorCode.DOCUMENT_NOT_FOUND });
     }
     await this.documentsRepository.update(id, {
+      lastAccessedAt: new Date(),
+    });
+  }
+
+  // Also counts as an access, so the document stays at the top of "recent".
+  async updateReadingProgress(
+    id: string,
+    userId: string,
+    page: number,
+  ): Promise<void> {
+    const document = await this.documentsRepository.findOne({
+      where: { id, userId },
+    });
+    if (!document) {
+      throw new NotFoundException({ code: ErrorCode.DOCUMENT_NOT_FOUND });
+    }
+    if (document.pageCount && page > document.pageCount) {
+      throw new BadRequestException({
+        code: ErrorCode.INVALID_REQUEST,
+        message: `Page ${page} is beyond the document's ${document.pageCount} pages`,
+      });
+    }
+    await this.documentsRepository.update(id, {
+      lastPage: page,
+      furthestPage: Math.max(document.furthestPage ?? 0, page),
       lastAccessedAt: new Date(),
     });
   }

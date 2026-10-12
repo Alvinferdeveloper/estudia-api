@@ -18,6 +18,7 @@ import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
 import { ErrorCode } from '../common/errors/error-codes';
 import { EntitlementsService } from '../entitlements/entitlements.service';
+import { ReadingProgressDto } from './dto/reading-progress.dto';
 
 @Controller('documents')
 @UseGuards(AuthGuard)
@@ -118,6 +119,16 @@ export class DocumentsController {
     @CurrentUserId() userId: string,
   ) {
     await this.documentsService.touchDocument(id, userId);
+    return { success: true };
+  }
+
+  @Patch(':id/progress')
+  async updateReadingProgress(
+    @Param('id') id: string,
+    @Body() { page }: ReadingProgressDto,
+    @CurrentUserId() userId: string,
+  ) {
+    await this.documentsService.updateReadingProgress(id, userId, page);
     return { success: true };
   }
 

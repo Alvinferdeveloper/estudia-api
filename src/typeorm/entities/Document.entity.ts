@@ -83,6 +83,13 @@ export class Document {
   @Column('int', { name: 'pageCount', nullable: true })
   pageCount: number | null;
 
+  // Reading progress: where the user left off and how far they have got; null until first read.
+  @Column('int', { name: 'lastPage', nullable: true })
+  lastPage: number | null;
+
+  @Column('int', { name: 'furthestPage', nullable: true })
+  furthestPage: number | null;
+
   @Column('longtext', { name: 'markdownContent', nullable: true })
   markdownContent: string | null;
 
