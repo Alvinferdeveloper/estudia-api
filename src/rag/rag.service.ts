@@ -10,6 +10,18 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PDFParse } from 'pdf-parse';
 import { ErrorCode } from '../common/errors/error-codes';
+import {
+  AICallLogService,
+  type EmbeddingFeature,
+} from '../ai/metering/ai-call-log.service';
+import type { AIUsage } from '../ai/providers/ai-provider.interface';
+
+const EMBEDDING_MODEL = 'gemini-embedding-001';
+// Gemini embeds up to 100 texts per batch request.
+const EMBEDDING_BATCH_SIZE = 100;
+// The embedding API reports no token counts; ~4 characters per token is close enough to watch costs.
+const estimateTokens = (texts: string[]): number =>
+  Math.ceil(texts.reduce((total, text) => total + text.length, 0) / 4);
 
 export interface Chunk {
   pageNumber: number;
@@ -27,11 +39,11 @@ export interface SearchResult {
 export class RagService {
   private supabase: SupabaseClient;
   private genAI: GoogleGenerativeAI;
-  private embeddingModel: string = 'models/gemini-embedding-001';
 
   constructor(
     @InjectRepository(Document)
     private documentsRepository: Repository<Document>,
+    private readonly callLog: AICallLogService,
   ) {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -95,10 +107,38 @@ export class RagService {
     return chunks;
   }
 
-  private async generateEmbedding(text: string): Promise<number[]> {
-    const model = this.genAI.getGenerativeModel({ model: this.embeddingModel });
-    const result = await model.embedContent(text);
-    return result.embedding.values;
+  // One request for up to EMBEDDING_BATCH_SIZE texts, logged to ai_call_log like every other AI call.
+  private async embed(
+    texts: string[],
+    feature: EmbeddingFeature,
+    userId: string,
+  ): Promise<number[][]> {
+    const startedAt = Date.now();
+    let usage: AIUsage | null = null;
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: `models/${EMBEDDING_MODEL}`,
+      });
+      const { embeddings } = await model.batchEmbedContents({
+        requests: texts.map((text) => ({
+          content: { role: 'user', parts: [{ text }] },
+        })),
+      });
+      usage = {
+        model: EMBEDDING_MODEL,
+        inputTokens: estimateTokens(texts),
+        outputTokens: 0,
+        reasoningTokens: 0,
+      };
+      return embeddings.map((embedding) => embedding.values);
+    } finally {
+      void this.callLog.record({
+        feature,
+        startedAt,
+        usage,
+        context: { userId },
+      });
+    }
   }
 
   async vectorizeDocument(
@@ -135,12 +175,13 @@ export class RagService {
     await this.deleteDocumentChunks(documentId);
 
     const chunks = this.chunkText(text);
-    const BATCH_SIZE = 5;
 
-    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-      const batch = chunks.slice(i, i + BATCH_SIZE);
-      const embeddings = await Promise.all(
-        batch.map((chunk) => this.generateEmbedding(chunk.content)),
+    for (let i = 0; i < chunks.length; i += EMBEDDING_BATCH_SIZE) {
+      const batch = chunks.slice(i, i + EMBEDDING_BATCH_SIZE);
+      const embeddings = await this.embed(
+        batch.map((chunk) => chunk.content),
+        'documentIndexing',
+        userId,
       );
 
       const records = batch.map((chunk, idx) => ({
@@ -169,10 +210,15 @@ export class RagService {
 
   async searchDocument(
     documentId: string,
+    userId: string,
     query: string,
     limit: number = 5,
   ): Promise<SearchResult[]> {
-    const queryEmbedding = await this.generateEmbedding(query);
+    const [queryEmbedding] = await this.embed(
+      [query],
+      'semanticSearch',
+      userId,
+    );
 
     const { data, error } = await this.supabase.rpc('match_document_chunks', {
       query_embedding: queryEmbedding,

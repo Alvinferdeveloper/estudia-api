@@ -58,6 +58,7 @@ export class RagController {
     }
     const results = await this.ragService.searchDocument(
       documentId,
+      userId,
       query,
       limit ? parseInt(limit, 10) : 5,
     );

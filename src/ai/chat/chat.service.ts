@@ -126,6 +126,7 @@ export class ChatService {
       }
       return await this.ragService.searchDocument(
         documentId,
+        userId,
         question,
         RAG_CHUNKS,
       );

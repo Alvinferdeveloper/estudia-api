@@ -6,8 +6,11 @@ import type { AIFeature, AIUsage } from '../providers/ai-provider.interface';
 import type { AICallContext } from './ai-call-context';
 import { estimateCostUsd } from './model-prices';
 
+// Embedding calls go straight to the provider SDK, outside the text-generation features.
+export type EmbeddingFeature = 'documentIndexing' | 'semanticSearch';
+
 export interface AICallRecord {
-  feature: AIFeature;
+  feature: AIFeature | EmbeddingFeature;
   startedAt: number;
   // Null when the call failed before reporting usage.
   usage: AIUsage | null;

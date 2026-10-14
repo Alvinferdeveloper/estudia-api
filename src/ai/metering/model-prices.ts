@@ -11,6 +11,7 @@ const MODEL_PRICES: Record<string, ModelPrice> = {
   'gemini-2.5-flash': { input: 0.3, output: 2.5 },
   'gemini-2.5-flash-lite': { input: 0.1, output: 0.4 },
   'gemini-2.5-pro': { input: 1.25, output: 10 },
+  'gemini-embedding-001': { input: 0.15, output: 0 },
 };
 
 const PER_MILLION = 1_000_000;
