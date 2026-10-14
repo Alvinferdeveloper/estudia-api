@@ -39,6 +39,10 @@ export interface SearchResult {
 export class RagService {
   private supabase: SupabaseClient;
   private genAI: GoogleGenerativeAI;
+  private readonly indexing = new Map<
+    string,
+    Promise<{ chunksCreated: number }>
+  >();
 
   constructor(
     @InjectRepository(Document)
@@ -141,18 +145,43 @@ export class RagService {
     }
   }
 
-  async vectorizeDocument(
+  private async findOwnedDocument(
     documentId: string,
     userId: string,
-  ): Promise<{ chunksCreated: number }> {
-    console.log(documentId, userId);
+  ): Promise<Document> {
     const document = await this.documentsRepository.findOne({
       where: { id: documentId, userId },
     });
     if (!document) {
       throw new NotFoundException({ code: ErrorCode.DOCUMENT_NOT_FOUND });
     }
+    return document;
+  }
 
+  // Embeds a document once: already indexed documents cost nothing, and concurrent requests
+  // (opening the reader, a chat question) share the run in progress. The lock is per process.
+  async vectorizeDocument(
+    documentId: string,
+    userId: string,
+  ): Promise<{ chunksCreated: number }> {
+    const document = await this.findOwnedDocument(documentId, userId);
+    if (document.isVectorized) return { chunksCreated: 0 };
+
+    let run = this.indexing.get(documentId);
+    if (!run) {
+      run = this.indexDocument(document, userId).finally(() =>
+        this.indexing.delete(documentId),
+      );
+      this.indexing.set(documentId, run);
+    }
+    return run;
+  }
+
+  private async indexDocument(
+    document: Document,
+    userId: string,
+  ): Promise<{ chunksCreated: number }> {
+    const documentId = document.id;
     let text = document.markdownContent;
 
     if (!text) {
@@ -201,9 +230,7 @@ export class RagService {
       }
     }
 
-    await this.documentsRepository.update(documentId, {
-      isVectorized: true,
-    } as any);
+    await this.documentsRepository.update(documentId, { isVectorized: true });
 
     return { chunksCreated: chunks.length };
   }
@@ -281,10 +308,11 @@ export class RagService {
       .eq('document_id', documentId);
   }
 
-  async isDocumentVectorized(documentId: string): Promise<boolean> {
-    const document = await this.documentsRepository.findOne({
-      where: { id: documentId },
-    });
-    return (document as any)?.isVectorized === true;
+  async isDocumentVectorized(
+    documentId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const document = await this.findOwnedDocument(documentId, userId);
+    return document.isVectorized;
   }
 }

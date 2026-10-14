@@ -52,7 +52,10 @@ export class RagController {
         message: 'Query parameter "q" is required',
       });
     }
-    const isVectorized = await this.ragService.isDocumentVectorized(documentId);
+    const isVectorized = await this.ragService.isDocumentVectorized(
+      documentId,
+      userId,
+    );
     if (!isVectorized) {
       return { results: [], vectorized: false };
     }
@@ -70,7 +73,10 @@ export class RagController {
     @Param('id') documentId: string,
     @CurrentUserId() userId: string,
   ) {
-    const isVectorized = await this.ragService.isDocumentVectorized(documentId);
+    const isVectorized = await this.ragService.isDocumentVectorized(
+      documentId,
+      userId,
+    );
     return { isVectorized };
   }
 }

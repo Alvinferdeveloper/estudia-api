@@ -121,9 +121,8 @@ export class ChatService {
     question: string,
   ) {
     try {
-      if (!(await this.ragService.isDocumentVectorized(documentId))) {
-        await this.ragService.vectorizeDocument(documentId, userId);
-      }
+      // Usually indexed already when the reader opened it; a no-op then.
+      await this.ragService.vectorizeDocument(documentId, userId);
       return await this.ragService.searchDocument(
         documentId,
         userId,
