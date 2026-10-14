@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { RagModule } from '../rag/rag.module';
@@ -11,13 +10,13 @@ import { VisualQueryController } from './visual-query/visual-query.controller';
 import { VisualQueryService } from './visual-query/visual-query.service';
 import { AI_PROVIDER } from './providers/ai-provider.interface';
 import { createAIProvider } from './providers/provider.factory';
-import { AICallLog } from '../typeorm/entities/AICallLog.entity';
 import { AICallLogService } from './metering/ai-call-log.service';
 import { MeteredAIProvider } from './metering/metered-ai.provider';
+import { MeteringModule } from './metering/metering.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AICallLog]),
+    MeteringModule,
     RagModule,
     DocumentsModule,
     MessagesModule,
@@ -25,7 +24,6 @@ import { MeteredAIProvider } from './metering/metered-ai.provider';
   ],
   controllers: [AIController, VisualQueryController],
   providers: [
-    AICallLogService,
     {
       provide: AI_PROVIDER,
       // The one place providers get wrapped: every AI call is metered, whatever the provider.
