@@ -4,14 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   Flashcard,
   FlashcardSource,
 } from '../typeorm/entities/Flashcard.entity';
 import { Document } from '../typeorm/entities/Document.entity';
+import { VocabularyEntry } from '../typeorm/entities/VocabularyEntry.entity';
 import { ErrorCode } from '../common/errors/error-codes';
 import { CreateFlashcardDto, UpdateFlashcardDto } from './dto/flashcard.dto';
+import { vocabularyCard } from './flashcard-templates';
 
 @Injectable()
 export class FlashcardsService {
@@ -47,6 +49,57 @@ export class FlashcardsService {
         pageNumber: dto.pageNumber ?? null,
       }),
     );
+  }
+
+  // Saved words that have no card yet (all of them, or only the given ones) get one.
+  async addVocabulary(
+    userId: string,
+    documentId: string,
+    vocabularyEntryIds?: string[],
+  ): Promise<{ added: number }> {
+    await this.verifyDocumentAccess(documentId, userId);
+    const entries = await this.flashcardRepository.manager.findBy(
+      VocabularyEntry,
+      {
+        documentId,
+        ...(vocabularyEntryIds && { id: In(vocabularyEntryIds) }),
+      },
+    );
+    if (entries.length === 0) return { added: 0 };
+
+    const carded = await this.flashcardRepository.find({
+      select: { vocabularyEntryId: true },
+      where: { vocabularyEntryId: In(entries.map((entry) => entry.id)) },
+    });
+    const cardedIds = new Set(carded.map((card) => card.vocabularyEntryId));
+
+    const cards = entries
+      .filter((entry) => !cardedIds.has(entry.id))
+      .flatMap((entry) => {
+        const card = vocabularyCard(entry);
+        return card
+          ? [
+              {
+                ...card,
+                userId,
+                documentId,
+                source: FlashcardSource.VOCABULARY,
+                vocabularyEntryId: entry.id,
+                pageNumber: entry.pageNumber,
+              },
+            ]
+          : [];
+      });
+    if (cards.length === 0) return { added: 0 };
+
+    // A concurrent request may have added some of them; the unique index skips those.
+    const result = await this.flashcardRepository
+      .createQueryBuilder()
+      .insert()
+      .values(cards)
+      .orIgnore()
+      .execute();
+    return { added: result.raw.affectedRows ?? cards.length };
   }
 
   async update(

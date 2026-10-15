@@ -12,7 +12,11 @@ import {
 import { FlashcardsService } from './flashcards.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
-import { CreateFlashcardDto, UpdateFlashcardDto } from './dto/flashcard.dto';
+import {
+  AddVocabularyDto,
+  CreateFlashcardDto,
+  UpdateFlashcardDto,
+} from './dto/flashcard.dto';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -34,6 +38,19 @@ export class FlashcardsController {
     @Body() dto: CreateFlashcardDto,
   ) {
     return this.flashcardsService.create(userId, documentId, dto);
+  }
+
+  @Post('documents/:documentId/flashcards/from-vocabulary')
+  async addVocabulary(
+    @CurrentUserId() userId: string,
+    @Param('documentId', ParseUUIDPipe) documentId: string,
+    @Body() dto: AddVocabularyDto,
+  ) {
+    return this.flashcardsService.addVocabulary(
+      userId,
+      documentId,
+      dto.vocabularyEntryIds,
+    );
   }
 
   @Patch('flashcards/:id')

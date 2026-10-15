@@ -1,8 +1,11 @@
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -48,4 +51,13 @@ export class UpdateFlashcardDto {
   @IsNotEmpty()
   @MaxLength(MAX_BACK_LENGTH)
   back?: string;
+}
+
+export class AddVocabularyDto {
+  // Omitted: every saved word of the document that has no card yet.
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID('all', { each: true })
+  vocabularyEntryIds?: string[];
 }
