@@ -5,6 +5,7 @@ export type AIFeature =
   | 'exam'
   | 'noteStream'
   | 'vocabulary'
+  | 'flashcards'
   | 'visualQuery';
 
 // Providers reject a request without user input, so every call must carry a prompt or messages.

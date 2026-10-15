@@ -12,16 +12,22 @@ import {
 import { FlashcardsService } from './flashcards.service';
 import { AuthGuard } from '../common/guards/auth.guard';
 import { CurrentUserId } from '../common/decorators/user.decorator';
+import { CreditsService } from '../entitlements/credits/credits.service';
 import {
   AddVocabularyDto,
   CreateFlashcardDto,
+  GenerateNoteFlashcardsDto,
+  SaveNoteFlashcardsDto,
   UpdateFlashcardDto,
 } from './dto/flashcard.dto';
 
 @Controller()
 @UseGuards(AuthGuard)
 export class FlashcardsController {
-  constructor(private readonly flashcardsService: FlashcardsService) {}
+  constructor(
+    private readonly flashcardsService: FlashcardsService,
+    private readonly creditsService: CreditsService,
+  ) {}
 
   @Get('documents/:documentId/flashcards')
   async findByDocument(
@@ -51,6 +57,33 @@ export class FlashcardsController {
       documentId,
       dto.vocabularyEntryIds,
     );
+  }
+
+  @Post('annotations/:id/flashcards/proposals')
+  async proposeFromNote(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) annotationId: string,
+    @Body() dto: GenerateNoteFlashcardsDto,
+  ) {
+    return this.creditsService.charge(
+      userId,
+      { action: 'flashcard.generate' },
+      () =>
+        this.flashcardsService.proposeFromNote(
+          userId,
+          annotationId,
+          dto.responseLanguage,
+        ),
+    );
+  }
+
+  @Post('annotations/:id/flashcards')
+  async saveFromNote(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) annotationId: string,
+    @Body() dto: SaveNoteFlashcardsDto,
+  ) {
+    return this.flashcardsService.saveFromNote(userId, annotationId, dto.cards);
   }
 
   @Patch('flashcards/:id')

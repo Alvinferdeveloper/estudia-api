@@ -21,6 +21,11 @@ import {
   buildVocabularyUserPrompt,
   isEquivalentMode,
 } from './prompts/vocabulary.prompts';
+import {
+  FLASHCARD_SYSTEM_PROMPT,
+  MAX_CARDS_PER_NOTE,
+  buildFlashcardUserPrompt,
+} from './prompts/flashcard.prompts';
 import { VocabularyExplanation } from '../typeorm/entities/VocabularyEntry.entity';
 
 @Injectable()
@@ -310,5 +315,47 @@ export class AIService {
         },
       ],
     };
+  }
+
+  // ─── Flashcards ───────────────────────────────────────────────────
+
+  // Throws instead of falling back, so a failed generation isn't charged.
+  async generateFlashcards(data: {
+    selectedText: string;
+    comment?: string | null;
+    aiResponse?: string | null;
+    responseLanguage?: string;
+  }): Promise<{ front: string; back: string }[]> {
+    const { text } = await this.provider.generateText({
+      feature: 'flashcards',
+      systemPrompt: FLASHCARD_SYSTEM_PROMPT,
+      userPrompt: buildFlashcardUserPrompt(data),
+    });
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text.match(/\[[\s\S]*\]/)?.[0] ?? '');
+    } catch (error) {
+      throw new AIProviderException(
+        'The model returned no parseable flashcards',
+        error,
+      );
+    }
+
+    const cards = (Array.isArray(parsed) ? parsed : [])
+      .filter(
+        (card): card is { front: string; back: string } =>
+          typeof card?.front === 'string' &&
+          typeof card?.back === 'string' &&
+          card.front.trim() !== '' &&
+          card.back.trim() !== '',
+      )
+      .slice(0, MAX_CARDS_PER_NOTE)
+      .map(({ front, back }) => ({ front: front.trim(), back: back.trim() }));
+
+    if (cards.length === 0) {
+      throw new AIProviderException('No flashcards were generated');
+    }
+    return cards;
   }
 }

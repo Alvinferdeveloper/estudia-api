@@ -11,8 +11,14 @@ import {
 } from '../typeorm/entities/Flashcard.entity';
 import { Document } from '../typeorm/entities/Document.entity';
 import { VocabularyEntry } from '../typeorm/entities/VocabularyEntry.entity';
+import { Annotation } from '../typeorm/entities/Annotation.entity';
+import { AIService } from '../ai/ai.service';
 import { ErrorCode } from '../common/errors/error-codes';
-import { CreateFlashcardDto, UpdateFlashcardDto } from './dto/flashcard.dto';
+import {
+  CreateFlashcardDto,
+  FlashcardContentDto,
+  UpdateFlashcardDto,
+} from './dto/flashcard.dto';
 import { vocabularyCard } from './flashcard-templates';
 
 @Injectable()
@@ -20,6 +26,7 @@ export class FlashcardsService {
   constructor(
     @InjectRepository(Flashcard)
     private readonly flashcardRepository: Repository<Flashcard>,
+    private readonly aiService: AIService,
   ) {}
 
   async findByDocument(
@@ -102,6 +109,43 @@ export class FlashcardsService {
     return { added: result.raw.affectedRows ?? cards.length };
   }
 
+  // Nothing is saved: the user reviews the proposals and saves the ones they keep.
+  async proposeFromNote(
+    userId: string,
+    annotationId: string,
+    responseLanguage?: string,
+  ): Promise<{ cards: FlashcardContentDto[] }> {
+    const note = await this.getOwnedNote(userId, annotationId);
+    const cards = await this.aiService.generateFlashcards({
+      selectedText: note.selectedText,
+      comment: note.comment,
+      aiResponse: note.aiResponse,
+      responseLanguage,
+    });
+    return { cards };
+  }
+
+  async saveFromNote(
+    userId: string,
+    annotationId: string,
+    cards: FlashcardContentDto[],
+  ): Promise<Flashcard[]> {
+    const note = await this.getOwnedNote(userId, annotationId);
+    return this.flashcardRepository.save(
+      cards.map((card) =>
+        this.flashcardRepository.create({
+          userId,
+          documentId: note.documentId,
+          source: FlashcardSource.NOTE,
+          annotationId: note.id,
+          front: card.front,
+          back: card.back,
+          pageNumber: note.pageNumber,
+        }),
+      ),
+    );
+  }
+
   async update(
     userId: string,
     id: string,
@@ -124,6 +168,20 @@ export class FlashcardsService {
       throw new NotFoundException({ code: ErrorCode.FLASHCARD_NOT_FOUND });
     }
     return card;
+  }
+
+  private async getOwnedNote(
+    userId: string,
+    annotationId: string,
+  ): Promise<Annotation> {
+    const note = await this.flashcardRepository.manager.findOneBy(Annotation, {
+      id: annotationId,
+    });
+    if (!note) {
+      throw new NotFoundException({ code: ErrorCode.ANNOTATION_NOT_FOUND });
+    }
+    await this.verifyDocumentAccess(note.documentId, userId);
+    return note;
   }
 
   private async verifyDocumentAccess(

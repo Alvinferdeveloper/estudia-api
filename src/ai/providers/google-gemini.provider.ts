@@ -33,6 +33,7 @@ const FEATURE_MODELS: Record<AIFeature, FeatureModel> = {
   exam: { model: 'gemini-2.5-flash', maxOutputTokens: 16384 },
   noteStream: { model: 'gemini-2.5-flash-lite', maxOutputTokens: 4096 },
   vocabulary: { model: 'gemini-2.5-flash', maxOutputTokens: 4096 },
+  flashcards: { model: 'gemini-2.5-flash', maxOutputTokens: 4096 },
   // Higher-quality, vision-capable tier for user-facing image explanations.
   visualQuery: { model: 'gemini-2.5-pro', maxOutputTokens: 8192 },
 };
