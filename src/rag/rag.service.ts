@@ -15,8 +15,11 @@ import {
   type EmbeddingFeature,
 } from '../ai/metering/ai-call-log.service';
 import type { AIUsage } from '../ai/providers/ai-provider.interface';
+import { DocumentIngestionService } from '../documents/document-ingestion.service';
 
 const EMBEDDING_MODEL = 'gemini-embedding-001';
+// How long vectorization waits for a document's parsing before using the pdf-parse fallback.
+const INGESTION_WAIT_MS = 2 * 60 * 1000;
 // Gemini embeds up to 100 texts per batch request.
 const EMBEDDING_BATCH_SIZE = 100;
 // The embedding API reports no token counts; ~4 characters per token is close enough to watch costs.
@@ -48,6 +51,7 @@ export class RagService {
     @InjectRepository(Document)
     private documentsRepository: Repository<Document>,
     private readonly callLog: AICallLogService,
+    private readonly ingestion: DocumentIngestionService,
   ) {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -189,7 +193,13 @@ export class RagService {
     userId: string,
   ): Promise<{ chunksCreated: number }> {
     const documentId = document.id;
-    let text = document.markdownContent;
+    // A document opened right after upload may still be parsing; its Markdown beats the pdf-parse fallback.
+    await this.ingestion.waitForIngestion(documentId, INGESTION_WAIT_MS);
+    const parsed = await this.documentsRepository.findOne({
+      where: { id: documentId },
+      select: { id: true, markdownContent: true },
+    });
+    let text = parsed?.markdownContent ?? null;
 
     if (!text) {
       const { data } = await this.supabase.storage

@@ -29,6 +29,8 @@ export class DocumentIngestionService {
   private readonly logger = new Logger(DocumentIngestionService.name);
   private readonly parserUrl =
     process.env.PARSER_SERVICE_URL || 'http://localhost:8000';
+  // Ingestions in progress, so vectorization can wait for the parser's text instead of falling back to pdf-parse.
+  private readonly running = new Map<string, Promise<void>>();
 
   constructor(
     @InjectRepository(Document)
@@ -49,12 +51,27 @@ export class DocumentIngestionService {
     buffer: Buffer,
     fileName: string,
   ): void {
-    this.ingest(documentId, buffer, fileName).catch((error) => {
-      this.logger.error(
-        `Ingestion failed for document ${documentId}:`,
-        error instanceof Error ? error.stack : String(error),
-      );
+    const run = this.ingest(documentId, buffer, fileName)
+      .catch((error) => {
+        this.logger.error(
+          `Ingestion failed for document ${documentId}:`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      })
+      .finally(() => this.running.delete(documentId));
+    this.running.set(documentId, run);
+  }
+
+  // Resolves when the document's ingestion ends (right away if none is running), or after timeoutMs at most.
+  async waitForIngestion(documentId: string, timeoutMs: number): Promise<void> {
+    const run = this.running.get(documentId);
+    if (!run) return;
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, timeoutMs);
     });
+    await Promise.race([run, timeout]);
+    clearTimeout(timer);
   }
 
   private async ingest(

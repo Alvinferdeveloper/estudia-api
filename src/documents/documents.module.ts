@@ -16,6 +16,6 @@ import { EntitlementsModule } from '../entitlements/entitlements.module';
   ],
   controllers: [DocumentsController],
   providers: [DocumentsService, DocumentIngestionService],
-  exports: [DocumentsService],
+  exports: [DocumentsService, DocumentIngestionService],
 })
 export class DocumentsModule {}
