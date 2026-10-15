@@ -56,10 +56,17 @@ export class RagService {
     this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
   }
 
+  // Pages joined with a form feed, the separator chunkText splits on (the parser service uses it too);
+  // pdf-parse's own text marks pages with "-- n of N --" instead, which left every chunk on page 1.
   private async extractTextFromPDF(url: string): Promise<string> {
     const parser = new PDFParse({ url });
-    const result = await parser.getText();
-    return result.text;
+    const { pages } = await parser.getText();
+    const pageCount = Math.max(0, ...pages.map((page) => page.num));
+    const textByPage = new Map(pages.map((page) => [page.num, page.text]));
+    return Array.from(
+      { length: pageCount },
+      (_, index) => textByPage.get(index + 1) ?? '',
+    ).join('\f');
   }
 
   private chunkText(
