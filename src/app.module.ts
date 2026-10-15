@@ -41,6 +41,8 @@ import { CreditLedgerEntry } from './typeorm/entities/CreditLedgerEntry.entity';
 import { EntitlementsModule } from './entitlements/entitlements.module';
 import { DatabaseTimezoneCheck } from './common/database/database-timezone.check';
 import { UsageModule } from './usage/usage.module';
+import { FlashcardsModule } from './flashcards/flashcards.module';
+import { Flashcard } from './typeorm/entities/Flashcard.entity';
 
 @Module({
   imports: [
@@ -59,6 +61,7 @@ import { UsageModule } from './usage/usage.module';
     AIModule,
     VocabularyModule,
     TranslateModule,
+    FlashcardsModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
@@ -89,6 +92,7 @@ import { UsageModule } from './usage/usage.module';
         AICallLog,
         CreditUsage,
         CreditLedgerEntry,
+        Flashcard,
       ],
       synchronize: true,
       timezone: 'Z',
