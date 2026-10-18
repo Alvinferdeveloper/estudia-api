@@ -1,4 +1,5 @@
 import type { CreditPeriod } from '../catalog';
+import { startOfUtcDay } from '../../common/utils/utc-day.util';
 
 export interface CreditWindow {
   key: string;
@@ -6,11 +7,6 @@ export interface CreditWindow {
 }
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
-
-const startOfUtcDay = (date: Date) =>
-  new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
 
 // Daily windows follow the UTC day. Monthly windows follow the paid billing period when there
 // is one, otherwise the UTC calendar month.
@@ -33,9 +29,7 @@ export const currentCreditWindow = (
     };
   }
 
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  );
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const resetsAt = new Date(start);
   resetsAt.setUTCMonth(start.getUTCMonth() + 1);
   return { key: `m:${isoDate(start)}`, resetsAt };
