@@ -106,7 +106,8 @@ export class FlashcardsService {
       .values(cards)
       .orIgnore()
       .execute();
-    return { added: result.raw.affectedRows ?? cards.length };
+    const { affectedRows } = result.raw as { affectedRows?: number };
+    return { added: affectedRows ?? cards.length };
   }
 
   // Nothing is saved: the user reviews the proposals and saves the ones they keep.
