@@ -81,6 +81,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      ts-fsrs:
+        specifier: ^5.4.2
+        version: 5.4.2
       typeorm:
         specifier: 0.3.26
         version: 0.3.26(mysql2@3.14.4)(reflect-metadata@0.2.2)(ts-node@10.9.2(@types/node@22.18.0)(typescript@5.9.2))
@@ -3337,6 +3340,10 @@ packages:
     engines: {node: '>=18.12'}
     peerDependencies:
       typescript: '>=4.8.4'
+
+  ts-fsrs@5.4.2:
+    resolution: {integrity: sha512-z4qop4pzTcyTzuJ566d9EaX/4bZZzhYfeaPImfVr+xcYT65c5oBgFDijUhCE/D+C78eaolHIhKRZ04/RwF+v2g==}
+    engines: {node: '>=20.0.0'}
 
   ts-jest@29.4.1:
     resolution: {integrity: sha512-SaeUtjfpg9Uqu8IbeDKtdaS0g8lS6FT6OzM3ezrDfErPJPHNDo/Ey+VFGP1bQIDfagYDLyRpd7O15XpG1Es2Uw==}
@@ -7281,6 +7288,8 @@ snapshots:
   ts-api-utils@2.1.0(typescript@5.9.2):
     dependencies:
       typescript: 5.9.2
+
+  ts-fsrs@5.4.2: {}
 
   ts-jest@29.4.1(@babel/core@7.28.3)(@jest/transform@30.1.2)(@jest/types@30.0.5)(babel-jest@30.1.2(@babel/core@7.28.3))(jest-util@30.0.5)(jest@30.1.3(@types/node@22.18.0)(ts-node@10.9.2(@types/node@22.18.0)(typescript@5.9.2)))(typescript@5.9.2):
     dependencies:

@@ -43,6 +43,7 @@ import { DatabaseTimezoneCheck } from './common/database/database-timezone.check
 import { UsageModule } from './usage/usage.module';
 import { FlashcardsModule } from './flashcards/flashcards.module';
 import { Flashcard } from './typeorm/entities/Flashcard.entity';
+import { FlashcardReview } from './typeorm/entities/FlashcardReview.entity';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { Flashcard } from './typeorm/entities/Flashcard.entity';
         CreditUsage,
         CreditLedgerEntry,
         Flashcard,
+        FlashcardReview,
       ],
       synchronize: true,
       timezone: 'Z',

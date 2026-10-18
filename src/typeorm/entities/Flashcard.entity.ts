@@ -18,9 +18,18 @@ export enum FlashcardSource {
   MANUAL = 'manual',
 }
 
+// Where a card is in spaced repetition (FSRS).
+export enum FlashcardState {
+  NEW = 'new',
+  LEARNING = 'learning',
+  REVIEW = 'review',
+  RELEARNING = 'relearning',
+}
+
 // A question/answer card from a document. Only ever created by an explicit user action.
 @Entity('flashcard')
 @Index(['documentId', 'createdAt'])
+@Index(['userId', 'due'])
 export class Flashcard {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -57,6 +66,34 @@ export class Flashcard {
 
   @Column('int', { name: 'pageNumber', nullable: true })
   pageNumber: number | null;
+
+  // FSRS memory state. A new card is due as soon as it exists.
+  @Column('timestamp', { name: 'due', default: () => 'CURRENT_TIMESTAMP' })
+  due: Date;
+
+  @Column({ type: 'enum', enum: FlashcardState, default: FlashcardState.NEW })
+  state: FlashcardState;
+
+  @Column('double', { name: 'stability', default: 0 })
+  stability: number;
+
+  @Column('double', { name: 'difficulty', default: 0 })
+  difficulty: number;
+
+  @Column('int', { name: 'scheduledDays', default: 0 })
+  scheduledDays: number;
+
+  @Column('int', { name: 'learningSteps', default: 0 })
+  learningSteps: number;
+
+  @Column('int', { name: 'reps', default: 0 })
+  reps: number;
+
+  @Column('int', { name: 'lapses', default: 0 })
+  lapses: number;
+
+  @Column('timestamp', { name: 'lastReviewedAt', nullable: true })
+  lastReviewedAt: Date | null;
 
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
