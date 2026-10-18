@@ -1,5 +1,5 @@
 import type { CreditPeriod } from '../catalog';
-import { startOfUtcDay } from '../../common/utils/utc-day.util';
+import { addUtcDays, startOfUtcDay } from '../../common/utils/utc-day.util';
 
 export interface CreditWindow {
   key: string;
@@ -17,9 +17,7 @@ export const currentCreditWindow = (
 ): CreditWindow => {
   if (period === 'daily') {
     const start = startOfUtcDay(now);
-    const resetsAt = new Date(start);
-    resetsAt.setUTCDate(start.getUTCDate() + 1);
-    return { key: `d:${isoDate(start)}`, resetsAt };
+    return { key: `d:${isoDate(start)}`, resetsAt: addUtcDays(start, 1) };
   }
 
   if (billingPeriod) {

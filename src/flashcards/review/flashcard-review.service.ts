@@ -10,7 +10,7 @@ import {
   FlashcardReview,
 } from '../../typeorm/entities/FlashcardReview.entity';
 import { ErrorCode } from '../../common/errors/error-codes';
-import { startOfUtcDay } from '../../common/utils/utc-day.util';
+import { addUtcDays, startOfUtcDay } from '../../common/utils/utc-day.util';
 import {
   MAX_NEW_CARDS_PER_DAY,
   applyReview,
@@ -20,6 +20,12 @@ import {
 export type DueFlashcard = Flashcard & {
   preview: Record<FlashcardRating, Date>;
 };
+
+export interface ReviewSummary {
+  total: number;
+  due: number;
+  nextDueAt: Date | null;
+}
 
 @Injectable()
 export class FlashcardReviewService {
@@ -51,12 +57,10 @@ export class FlashcardReviewService {
     return [...started, ...fresh].map((card) => withPreview(card, now));
   }
 
-  async summary(
-    userId: string,
-    documentId?: string,
-  ): Promise<{ total: number; due: number }> {
+  // `nextDueAt` is when the next card becomes due, for "all done" screens.
+  async summary(userId: string, documentId?: string): Promise<ReviewSummary> {
     const now = new Date();
-    const [total, started, fresh, newSlots] = await Promise.all([
+    const [total, started, fresh, newSlots, upcoming] = await Promise.all([
       this.flashcardRepository.countBy({
         userId,
         ...(documentId && { documentId }),
@@ -68,8 +72,25 @@ export class FlashcardReviewService {
         .andWhere('card.state = :new', { new: FlashcardState.NEW })
         .getCount(),
       this.newCardSlots(userId, now),
+      this.scopedQuery(userId, documentId)
+        .andWhere('card.due > :now', { now })
+        .orderBy('card.due', 'ASC')
+        .getOne(),
     ]);
-    return { total, due: started + Math.min(fresh, newSlots) };
+
+    // New cards held back by the daily limit become due when the UTC day changes.
+    const tomorrow =
+      fresh > newSlots ? addUtcDays(startOfUtcDay(now), 1) : null;
+    const candidates = [upcoming?.due, tomorrow].filter((date): date is Date =>
+      Boolean(date),
+    );
+    return {
+      total,
+      due: started + Math.min(fresh, newSlots),
+      nextDueAt: candidates.length
+        ? new Date(Math.min(...candidates.map((date) => date.getTime())))
+        : null,
+    };
   }
 
   async review(
@@ -101,15 +122,20 @@ export class FlashcardReviewService {
     return withPreview(card, now);
   }
 
-  private dueQuery(userId: string, documentId: string | undefined, now: Date) {
+  private scopedQuery(userId: string, documentId: string | undefined) {
     const query = this.flashcardRepository
       .createQueryBuilder('card')
-      .where('card.userId = :userId', { userId })
-      .andWhere('card.due <= :now', { now });
+      .where('card.userId = :userId', { userId });
     if (documentId) {
       query.andWhere('card.documentId = :documentId', { documentId });
     }
     return query;
+  }
+
+  private dueQuery(userId: string, documentId: string | undefined, now: Date) {
+    return this.scopedQuery(userId, documentId).andWhere('card.due <= :now', {
+      now,
+    });
   }
 
   // The limit is per user, whichever documents the new cards come from.
