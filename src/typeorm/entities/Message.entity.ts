@@ -9,6 +9,12 @@ import {
 import { Document } from './Document.entity';
 import { Conversation } from './Conversation.entity';
 
+// A passage a reply was grounded on; the reply cites it as [n], its 1-based position.
+export interface ChatSource {
+  pageNumber: number;
+  content: string;
+}
+
 @Entity('message')
 export class Message {
   @PrimaryGeneratedColumn('uuid')
@@ -22,6 +28,10 @@ export class Message {
 
   @Column('text', { name: 'documentId', nullable: false })
   documentId: string;
+
+  // Only on assistant replies that had document context.
+  @Column('json', { name: 'sources', nullable: true })
+  sources: ChatSource[] | null;
 
   @Column('uuid', { name: 'conversationId', nullable: true })
   conversationId: string | null;

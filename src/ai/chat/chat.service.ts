@@ -3,7 +3,10 @@ import type { ModelMessage } from 'ai';
 import { RagService } from '../../rag/rag.service';
 import { DocumentsService } from '../../documents/documents.service';
 import { MessagesService } from '../../messages/messages.service';
-import type { Message } from '../../typeorm/entities/Message.entity';
+import type {
+  ChatSource,
+  Message,
+} from '../../typeorm/entities/Message.entity';
 import { AI_PROVIDER } from '../providers/ai-provider.interface';
 import type {
   AIProvider,
@@ -33,9 +36,13 @@ const fitHistory = (messages: Message[]): Message[] => {
   return kept;
 };
 
+// Older replies cite sources the model no longer sees; without their markers it can't reuse stale numbers.
+const CITATION_MARKER = /\[\d+\]/g;
+
 const toModelMessage = ({ role, content }: Message): ModelMessage => ({
   role,
-  content,
+  content:
+    role === 'assistant' ? content.replace(CITATION_MARKER, '') : content,
 });
 
 // The server owns the conversation: it stores both turns and builds the history itself.
@@ -77,6 +84,10 @@ export class ChatService {
     const history = fitHistory(recent.slice(-HISTORY_BUDGET.maxMessages));
 
     const chunks = await this.findRelevantChunks(document.id, userId, message);
+    const sources: ChatSource[] = chunks.map(({ pageNumber, content }) => ({
+      pageNumber,
+      content,
+    }));
     const result = await this.provider.streamText({
       feature: 'chat',
       systemPrompt: buildChatSystemPrompt(
@@ -85,11 +96,12 @@ export class ChatService {
         responseLanguage,
       ),
       messages: history.map(toModelMessage),
+      metadata: { sources },
     });
 
     void result.completion.then((completion) =>
       completion
-        ? this.saveReply(conversation.id, userId, completion.text)
+        ? this.saveReply(conversation.id, userId, completion.text, sources)
         : undefined,
     );
     return result;
@@ -99,13 +111,19 @@ export class ChatService {
     conversationId: string,
     userId: string,
     text: string,
+    sources: ChatSource[],
   ) {
     try {
       const conversation = await this.messagesService.getOwnedConversation(
         conversationId,
         userId,
       );
-      await this.messagesService.appendMessage(conversation, 'assistant', text);
+      await this.messagesService.appendMessage(
+        conversation,
+        'assistant',
+        text,
+        sources.length > 0 ? sources : null,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to save the reply in conversation ${conversationId}`,

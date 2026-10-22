@@ -86,6 +86,7 @@ export class GoogleGeminiProvider implements AIProvider {
     feature,
     systemPrompt,
     messages,
+    metadata,
   }: StreamTextOptions): Promise<StreamTextResult> {
     const { model, maxOutputTokens } = FEATURE_MODELS[feature];
 
@@ -104,6 +105,8 @@ export class GoogleGeminiProvider implements AIProvider {
           ? createUIMessageStreamResponse({
               stream: toUIMessageStream({
                 stream: result.stream,
+                messageMetadata: ({ part }) =>
+                  part.type === 'start' ? metadata : undefined,
                 // Client gets this as `errorText`; never the raw provider error.
                 onError: () => ErrorCode.AI_PROVIDER_ERROR,
               }),

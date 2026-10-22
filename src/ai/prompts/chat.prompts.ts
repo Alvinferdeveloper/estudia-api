@@ -23,10 +23,10 @@ export function buildChatSystemPrompt(
     prompt += `SECCIONES RELEVANTES DEL DOCUMENTO:\n`;
 
     chunks.forEach((chunk, i) => {
-      prompt += `\n--- Sección ${i + 1} (pág. ${chunk.pageNumber}) ---\n${chunk.content}\n`;
+      prompt += `\n[${i + 1}] (pág. ${chunk.pageNumber})\n${chunk.content}\n`;
     });
 
-    prompt += `\n\nResponde basándote en las secciones relevantes del documento. Cita las páginas cuando sea posible.`;
+    prompt += `\n\nResponde basándote en estas secciones. Justo después de cada afirmación que salga de una sección, cítala con su número entre corchetes, por ejemplo [1] o [1][3]. Usa solo los números de esta lista: no cites páginas ni inventes números, y no cites lo que no salga de las secciones. No pongas citas en las preguntas sugeridas.`;
   } else {
     prompt += `Responde de forma clara, concisa y útil para facilitar el estudio.`;
   }

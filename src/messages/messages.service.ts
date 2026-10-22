@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Message } from '../typeorm/entities/Message.entity';
+import { Message, type ChatSource } from '../typeorm/entities/Message.entity';
 import { Conversation } from '../typeorm/entities/Conversation.entity';
 import { Document } from '../typeorm/entities/Document.entity';
 import { ErrorCode } from '../common/errors/error-codes';
@@ -93,6 +93,7 @@ export class MessagesService {
     conversation: Conversation,
     role: Message['role'],
     content: string,
+    sources: ChatSource[] | null = null,
   ): Promise<Message> {
     const update: Partial<Conversation> = { updatedAt: new Date() };
 
@@ -107,6 +108,7 @@ export class MessagesService {
       this.messagesRepository.create({
         role,
         content,
+        sources,
         documentId: conversation.documentId,
         conversationId: conversation.id,
       }),

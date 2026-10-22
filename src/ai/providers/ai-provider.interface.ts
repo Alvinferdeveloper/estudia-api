@@ -21,6 +21,8 @@ export interface StreamTextOptions {
   feature: AIFeature;
   systemPrompt: string;
   messages: ModelMessage[];
+  // Reaches the client with the start of the reply; only chat streams carry it.
+  metadata?: Record<string, unknown>;
 }
 
 // Provider-neutral usage, so metering works the same for any provider.
