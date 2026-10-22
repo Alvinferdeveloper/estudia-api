@@ -5,7 +5,7 @@ import { dataSource } from '../data-source';
 export const auth = betterAuth({
   database: typeormAdapter(dataSource),
   basePath: '/api/auth',
-  trustedOrigins: [process.env.FRONTEND_URL || 'http://localhost:3000'],
+  trustedOrigins: [process.env.FRONTEND_URL || 'http://localhost:3100'],
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,

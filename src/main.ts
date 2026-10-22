@@ -20,7 +20,7 @@ async function bootstrap() {
   app.use(requestLogger.use.bind(requestLogger));
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:3100',
     credentials: true,
   });
 
