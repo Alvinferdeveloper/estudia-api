@@ -29,7 +29,6 @@ export enum SubscriptionPlan {
 
 @Entity('payment')
 @Index(['userId', 'status'])
-@Index(['paypalOrderId'])
 @Index(['eventId'])
 export class Payment {
   @PrimaryGeneratedColumn('uuid')
